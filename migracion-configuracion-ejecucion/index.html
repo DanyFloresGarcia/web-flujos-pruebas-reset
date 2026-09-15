@@ -659,6 +659,54 @@ and nombre_etapa = 'MIGRACION_CONFIGURACION'</pre>
           <div class="case-field"><div class="label">Acción / Query</div><div><a class="drive-link" href="https://drive.google.com/file/d/1warNcHQS5RjxJZsFFTCqpjMX6faSiKYr/view?usp=sharing" target="_blank" rel="noopener">Script de reinicio ↗</a> (con el id_promocion a limpiar) y repetir Preparación → Ejecución.</div></div>
           <div class="case-field"><div class="label">Resultado esperado</div><div>Sin residuos de la corrida anterior; segunda migración limpia, sin duplicados ni afectar configuración compartida de otras promociones activas.</div></div>
       </div>
+
+      <div class="case-card">
+          <div class="case-card-head"><h4>CP-01 · Ejecución programada (Cron)</h4><span class="case-tag happy">Happy path</span></div>
+          <div class="case-field"><div class="label">Precondición</div><div>El reloj del sistema se acerca a las 10:00 PM.</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>El evento se activa exactamente a las 10 PM y desencadena la ejecución de la AWS Lambda.</div></div>
+      </div>
+
+      <div class="case-card">
+          <div class="case-card-head"><h4>CP-02 · Filtro de estado válido</h4><span class="case-tag happy">Happy path</span></div>
+          <div class="case-field"><div class="label">Precondición</div><div>Existen registros en la BD de Configuración con estados <span class="mono">MIGRACION_CONFIGURACION</span> y ACTIVA.</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>La Lambda obtiene solo los registros con estado <span class="mono">MIGRACION_CONFIGURACION</span> y genera eventos para ellos.</div></div>
+      </div>
+
+      <div class="case-card">
+          <div class="case-card-head"><h4>CP-03 · Ausencia de datos</h4><span class="case-tag negativo">Negativo</span></div>
+          <div class="case-field"><div class="label">Precondición</div><div>No hay ningún registro en estado <span class="mono">MIGRACION_CONFIGURACION</span> en la BD de Configuración.</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>La Lambda se ejecuta correctamente sin errores, no se envían mensajes a la cola SQS.</div></div>
+      </div>
+
+      <div class="case-card">
+          <div class="case-card-head"><h4>CP-04 · Extracción de detalle (Happy Path)</h4><span class="case-tag happy">Happy path</span></div>
+          <div class="case-field"><div class="label">Precondición</div><div>Hay mensajes en SQS. La BD de Configuración tiene los detalles de dichas promociones.</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>Fargate consume el mensaje, consulta la BD de Configuración por el ID recibido y extrae la configuración completa correctamente.</div></div>
+      </div>
+
+      <div class="case-card">
+          <div class="case-card-head"><h4>CP-05 · Carga a BD de Ejecución (Happy Path)</h4><span class="case-tag happy">Happy path</span></div>
+          <div class="case-field"><div class="label">Precondición</div><div>Fargate extrajo exitosamente la configuración en el paso previo.</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>La configuración se inserta correctamente en la BD de Ejecución con la integridad de datos intacta.</div></div>
+      </div>
+
+      <div class="case-card">
+          <div class="case-card-head"><h4>CP-06 · Resiliencia ante fallos de Base de Datos</h4><span class="case-tag negativo">Negativo</span></div>
+          <div class="case-field"><div class="label">Precondición</div><div>Mensaje en SQS. BD de Ejecución no disponible o rechaza conexión.</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>Fargate falla la carga, el mensaje no se elimina de la SQS y se registra el error en los logs.</div></div>
+      </div>
+
+      <div class="case-card">
+          <div class="case-card-head"><h4>CP-07 · Manejo de duplicados</h4><span class="case-tag negativo">Negativo</span></div>
+          <div class="case-field"><div class="label">Precondición</div><div>Se inyectan dos mensajes idénticos en la cola SQS.</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>Fargate procesa el primero insertándolo en la BD de Ejecución; el segundo debe hacer un "upsert" (actualizar) o ser ignorado sin generar un error crítico en el sistema.</div></div>
+      </div>
+
+      <div class="case-card">
+          <div class="case-card-head"><h4>CP-08 · Prueba de carga parcial</h4><span class="case-tag regresion">Regresión</span></div>
+          <div class="case-field"><div class="label">Precondición</div><div>Insertar parcialmente los registros.</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>El Worker debe migrar la configuración sin duplicar los datos migrados en el primer lote.</div></div>
+      </div>
     </div>
 
   </div>
