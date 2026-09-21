@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flujo de migración: GCP a Audiencia</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F6F7F5;
+    --surface:#FFFFFF;
+    --border:#E1E4E0;
+    --text-primary:#1B1F1C;
+    --text-secondary:#5C625E;
+    --text-muted:#8A8F8B;
+
+    --teal-bg:#E1F5EE; --teal-text:#085041; --teal-border:#5DCAA5;
+    --coral-bg:#FAECE7; --coral-text:#712B13; --coral-border:#F0997B;
+    --amber-bg:#FAEEDA; --amber-text:#633806; --amber-border:#EF9F27;
+    --turquoise-bg:#E0F7FA; --turquoise-text:#0B5B66; --turquoise-border:#26C6DA;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text-primary);
+    font-family:'Inter', sans-serif;
+    line-height:1.6;
+    padding:40px 20px 80px;
+  }
+  .wrap{max-width:880px;margin:0 auto;}
+  h1,h2,h3{font-family:'Space Grotesk', sans-serif;font-weight:600;margin:0;}
+  .mono{font-family:'IBM Plex Mono', monospace;}
+
+  header{margin-bottom:36px;}
+  header h1{font-size:26px;color:var(--text-primary);}
+  header p{margin:8px 0 0;color:var(--text-secondary);font-size:15px;max-width:60ch;}
+
+  /* ---- overview cards ---- */
+  #overview{display:flex;flex-direction:column;gap:14px;}
+  .phase-card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-left:5px solid var(--card-accent, #999);
+    border-radius:10px;
+    padding:20px 22px;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  .phase-card:hover{box-shadow:0 2px 10px rgba(0,0,0,0.06);}
+  .phase-card:focus-visible{outline:2px solid var(--card-accent,#999);outline-offset:2px;}
+  .phase-card .info h2{font-size:17px;}
+  .phase-card .info p{margin:6px 0 0;font-size:14px;color:var(--text-secondary);}
+  .phase-tag{
+    font-size:11px;
+    letter-spacing:.02em;
+    color:var(--card-accent-text,#555);
+    background:var(--card-accent-bg,#eee);
+    padding:3px 9px;
+    border-radius:20px;
+    display:inline-block;
+    margin-bottom:8px;
+  }
+  .chevron{font-size:20px;color:var(--text-muted);flex-shrink:0;}
+  .phase-card.pending{border-left-style:dashed;}
+
+  .prep{--card-accent:var(--teal-border); --card-accent-bg:var(--teal-bg); --card-accent-text:var(--teal-text);}
+  .exec{--card-accent:var(--coral-border); --card-accent-bg:var(--coral-bg); --card-accent-text:var(--coral-text);}
+  .valid{--card-accent:var(--turquoise-border); --card-accent-bg:var(--turquoise-bg); --card-accent-text:var(--turquoise-text);}
+
+  /* ---- detail views ---- */
+  .detail{display:none;}
+  .detail.active{display:block;}
+  #overview.hidden{display:none;}
+
+  .back-btn{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    color:var(--text-primary);
+    font-family:'Inter',sans-serif;
+    font-size:14px;
+    font-weight:500;
+    padding:9px 16px;
+    border-radius:8px;
+    cursor:pointer;
+    margin-bottom:24px;
+  }
+  .back-btn:hover{background:#F0F1EF;}
+
+  .detail-head{
+    border-radius:10px;
+    padding:18px 22px;
+    margin-bottom:24px;
+    border:1px solid var(--border);
+  }
+  .detail-head h2{font-size:19px;}
+  .detail-head p{margin:6px 0 0;font-size:14px;color:var(--text-secondary);}
+
+  .detail-head.prep{background:var(--teal-bg);border-color:var(--teal-border);}
+  .detail-head.prep h2{color:var(--teal-text);}
+  .detail-head.exec{background:var(--coral-bg);border-color:var(--coral-border);}
+  .detail-head.exec h2{color:var(--coral-text);}
+  .detail-head.valid{background:var(--turquoise-bg);border-color:var(--turquoise-border);}
+  .detail-head.valid h2{color:var(--turquoise-text);}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px;background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+  th{background:#F0F1EF;text-align:left;padding:10px 14px;font-weight:600;color:var(--text-secondary);font-size:12.5px;}
+  .ref-table th{background:var(--turquoise-bg);color:var(--turquoise-text);font-size:13.5px;font-weight:700;padding:12px 14px;}
+  td{padding:10px 14px;border-top:1px solid var(--border);vertical-align:top;}
+  tr:nth-child(even) td{background:#FAFBFA;}
+
+  .steps{display:flex;flex-direction:column;gap:0;}
+  .step{
+    display:flex;
+    gap:16px;
+    padding:16px 0;
+    border-bottom:1px solid var(--border);
+  }
+  .step:last-child{border-bottom:none;}
+  .step-num{
+    width:30px;height:30px;flex-shrink:0;
+    border-radius:50%;
+    background:var(--coral-bg);
+    color:var(--coral-text);
+    display:flex;align-items:center;justify-content:center;
+    font-size:13px;font-weight:600;font-family:'Space Grotesk',sans-serif;
+  }
+  .step-num.prep{background:var(--teal-bg);color:var(--teal-text);}
+  .step-num.valid{background:var(--turquoise-bg);color:var(--turquoise-text);}
+  .step h3{font-size:15px;margin-bottom:4px;}
+  .step p{margin:0;font-size:14px;color:var(--text-secondary);}
+  .step .service{font-size:12px;color:var(--coral-text);}
+  .step .service.prep{color:var(--teal-text);}
+  .step .service.valid{color:var(--turquoise-text);}
+
+  /* ---- sub-sections: prerrequisitos / reglas ---- */
+  .sub-section{margin-bottom:26px;}
+  .sub-section h3{font-size:14px;color:var(--text-secondary);margin-bottom:12px;}
+  .crit-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px;}
+  .crit-list li{position:relative;padding-left:18px;font-size:14px;color:var(--text-primary);}
+  .crit-list li::before{content:"";position:absolute;left:0;top:7px;width:6px;height:6px;border-radius:50%;background:var(--dot-color,#999);}
+  .crit-list.prep li::before{--dot-color:var(--teal-border);}
+  .crit-list.exec li::before{--dot-color:var(--coral-border);}
+  .crit-list.valid li::before{--dot-color:var(--turquoise-border);}
+  .steps-title{font-size:14px;color:var(--text-secondary);margin-bottom:12px;}
+
+  /* ---- query examples ---- */
+  .query-label{font-size:12.5px;color:var(--text-secondary);margin:16px 0 6px;font-family:'IBM Plex Mono', monospace;}
+  .query-label:first-child{margin-top:0;}
+  /* ---- casos de validación ---- */
+  .case-tag{display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap;}
+  .case-tag.happy{background:var(--teal-bg);color:var(--teal-text);}
+  .case-tag.negativo{background:var(--coral-bg);color:var(--coral-text);}
+  .case-tag.regresion{background:var(--turquoise-bg);color:var(--turquoise-text);}
+
+  .case-card{border:1px solid var(--border);border-radius:10px;padding:18px 20px;margin-bottom:14px;background:var(--surface);}
+  .case-card-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
+  .case-card-head h4{font-size:15px;font-family:'Space Grotesk',sans-serif;font-weight:600;color:var(--text-primary);}
+  .case-field{display:grid;grid-template-columns:130px 1fr;gap:8px;font-size:13.5px;padding:8px 0;border-top:1px solid var(--border);}
+  .case-field:first-of-type{border-top:none;}
+  .case-field .label{color:var(--text-secondary);font-weight:600;}
+
+  .query-block{
+    background:#181B19;
+    color:#DCE0DD;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+    line-height:1.6;
+    padding:14px 16px;
+    border-radius:8px;
+    overflow-x:auto;
+    white-space:pre;
+    margin:0;
+  }
+  .note{font-size:13px;color:var(--text-muted);margin-top:14px;}
+  .note a{color:var(--text-secondary);}
+
+  /* ---- access table ---- */
+  .access-table td{font-size:13.5px;}
+  .table-scroll{overflow-x:auto;}
+  .raci-badge{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;font-size:11px;font-weight:700;font-family:'Space Grotesk',sans-serif;}
+  .raci-badge.r{background:var(--teal-bg);color:var(--teal-text);}
+  .raci-badge.a{background:var(--coral-bg);color:var(--coral-text);}
+  .raci-badge.i{background:#E7E9E7;color:var(--text-secondary);}
+  .raci-dash{color:var(--text-muted);}
+  .raci-table th, .raci-table td{text-align:center;}
+  .raci-table td:nth-child(2), .raci-table th:nth-child(2){text-align:left;}
+  .person-tag{display:inline-block;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:20px;white-space:nowrap;margin:2px;}
+  .person-tag.dflores{background:var(--teal-bg);color:var(--teal-text);}
+  .person-tag.aojeda{background:var(--coral-bg);color:var(--coral-text);}
+  .person-tag.ambos{background:#E7E9E7;color:var(--text-secondary);}
+  .person-tag.pjulca{background:#EDE9FE;color:#5B21B6;}
+  .person-tag.todos{background:#E7E9E7;color:var(--text-secondary);}
+  .env-tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.02em;padding:4px 11px;border-radius:6px;margin:22px 0 12px;background:#E7E9E7;color:var(--text-secondary);}
+  .env-tag.qa{background:var(--teal-bg);color:var(--teal-text);}
+  .env-tag.dev{background:#EDE9FE;color:#5B21B6;}
+  .env-tag:first-of-type{margin-top:6px;}
+  .priority-tag{display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap;}
+  .priority-tag.alta{background:var(--coral-bg);color:var(--coral-text);}
+  .priority-tag.media{background:var(--amber-bg);color:var(--amber-text);}
+  .priority-tag.baja{background:#E7E9E7;color:var(--text-secondary);}
+  .raci-item-title{font-weight:600;font-size:13.5px;}
+  .raci-item-desc{font-size:12.5px;color:var(--text-secondary);margin-top:3px;font-weight:400;}
+  .raci-legend{font-size:12.5px;color:var(--text-secondary);margin-top:10px;display:flex;gap:16px;flex-wrap:wrap;}
+  .raci-legend span{display:inline-flex;align-items:center;gap:6px;}
+  .group-tag{display:inline-block;background:var(--teal-bg);color:var(--teal-text);font-size:11.5px;font-weight:700;letter-spacing:.02em;padding:5px 12px;border-radius:20px;margin:8px 0 16px;}
+  .group-tag.exec{background:var(--coral-bg);color:var(--coral-text);}
+  .group-tag.valid{background:var(--turquoise-bg);color:var(--turquoise-text);}
+  .group-divider{border-top:1px solid var(--border);margin-top:30px;padding-top:2px;}
+  .pending-link{color:var(--text-muted);font-style:italic;}
+  .drive-link{display:inline-flex;align-items:center;gap:5px;color:var(--text-primary);font-weight:600;text-decoration:none;border-bottom:1px solid currentColor;}
+  .drive-link:hover{opacity:.75;}
+
+  .empty-state{
+    border:1px dashed var(--amber-border);
+    background:var(--surface);
+    border-radius:10px;
+    padding:32px 26px;
+    text-align:center;
+    color:var(--text-secondary);
+  }
+  .empty-state p{margin:0 0 4px;}
+  .empty-state .small{font-size:13px;color:var(--text-muted);}
+
+  .todo{color:var(--amber-text);background:var(--amber-bg);font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:10px;display:inline-block;margin-left:6px;vertical-align:middle;}
+
+  footer{margin-top:48px;font-size:12.5px;color:var(--text-muted);text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Flujo de migración: GCP a Audiencia</h1>
+    <p>Guía de referencia para el proveedor. Tres fases secuenciales, de inicio a fin. Haz clic en una fase para ver el detalle técnico; el botón de regreso te trae de vuelta a esta vista. <em>Página en construcción — el contenido marcado como [Pendiente] falta completar.</em></p>
+  </header>
+
+  <div id="overview">
+    <div class="phase-card prep" tabindex="0" role="button" onclick="showDetail('prep')" onkeydown="if(event.key==='Enter')showDetail('prep')">
+      <div class="info">
+        <span class="phase-tag">Fase 1</span>
+        <h2>Preparación</h2>
+        <p>Accesos, prerrequisitos, reglas y configuración de datos antes de ejecutar la migración.</p>
+      </div>
+      <span class="chevron">›</span>
+    </div>
+
+    <div class="phase-card exec" tabindex="0" role="button" onclick="showDetail('exec')" onkeydown="if(event.key==='Enter')showDetail('exec')">
+      <div class="info">
+        <span class="phase-tag">Fase 2</span>
+        <h2>Ejecución</h2>
+        <p>[Pendiente] Resumen del pipeline automático de GCP hacia bd_promocion_audiencia.</p>
+      </div>
+      <span class="chevron">›</span>
+    </div>
+
+    <div class="phase-card valid" tabindex="0" role="button" onclick="showDetail('valid')" onkeydown="if(event.key==='Enter')showDetail('valid')">
+      <div class="info">
+        <span class="phase-tag">Fase 3</span>
+        <h2>Validación</h2>
+        <p>[Pendiente] Mapeo de tablas origen → destino y criterios de aceptación.</p>
+      </div>
+      <span class="chevron">›</span>
+    </div>
+  </div>
+
+  <!-- ================= DETAIL: PREPARACIÓN ================= -->
+  <div class="detail" id="detail-prep">
+    <button class="back-btn" onclick="showOverview()">← Volver al inicio</button>
+    <div class="detail-head prep">
+      <h2>Fase 1 · Preparación</h2>
+      <p>Condiciones, reglas, accesos y carga de datos que deben quedar listos antes de que el proceso de ejecución pueda tomar una promoción.</p>
+    </div>
+
+    <div class="group-tag">Definition of Ready (DoR)</div>
+    <div class="sub-section">
+      <h3>Accesos y permisos para pruebas<span class="todo">Pendiente</span></h3>
+      <p style="font-size:13.5px;color:var(--text-secondary);margin:0 0 8px;">[Pendiente: quién prueba este motor, en qué ambientes (DEV/QA), y quién es dueño de la infraestructura de GCP.]</p>
+
+      <div class="env-tag qa">Ambiente QA</div>
+      <div class="table-scroll">
+      <table class="access-table raci-table">
+        <thead><tr><th>Prioridad</th><th>Tipo de acceso</th><th>Para quién</th><th>Plataforma</th><th>BD</th><th>Arquitectura</th><th>Desarrollo</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="priority-tag alta">Alta</span></td>
+            <td><div class="raci-item-title">[Pendiente: tipo de acceso GCP]</div><div class="raci-item-desc">[Pendiente: descripción]</div></td>
+            <td><span class="raci-dash">–</span></td>
+            <td><span class="raci-dash">–</span></td>
+            <td><span class="raci-dash">–</span></td>
+            <td><span class="raci-dash">–</span></td>
+            <td><span class="raci-dash">–</span></td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+      <div class="raci-legend">
+        <span><span class="raci-badge r">R</span> Responsable · otorga el acceso</span>
+        <span><span class="raci-badge a">A</span> Aprobador</span>
+        <span><span class="raci-badge i">I</span> Informado</span>
+        <span><span class="priority-tag alta">Alta</span> bloquea el flujo</span>
+        <span><span class="priority-tag media">Media</span> necesario para repetir/verificar</span>
+        <span><span class="priority-tag baja">Baja</span> opcional</span>
+      </div>
+    </div>
+
+    <div class="sub-section">
+      <h3>Pre requisitos técnicos<span class="todo">Pendiente</span></h3>
+      <ul class="crit-list prep">
+        <li>[Pendiente: infraestructura de GCP desplegada y con permisos habilitados en ambiente QA.]</li>
+        <li>[Pendiente: servicios de GCP de la arquitectura ya probados, como input de esta preparación.]</li>
+      </ul>
+    </div>
+
+    <div class="group-tag group-divider">Reglas de negocio</div>
+    <div class="sub-section">
+      <h3>Reglas y lógica<span class="todo">Pendiente</span></h3>
+      <ul class="crit-list prep">
+        <li>[Pendiente: qué promociones/segmentos de audiencia entran en el alcance de este flujo.]</li>
+        <li>[Pendiente: condiciones/etapa que debe tener el registro para ser tomado por el proceso.]</li>
+      </ul>
+    </div>
+
+    <div class="group-tag group-divider">Configuración de datos de prueba</div>
+    <div class="sub-section">
+      <h3>Configuración de datos de prueba<span class="todo">Pendiente</span></h3>
+      <p style="font-size:13.5px;color:var(--text-secondary);margin:0 0 12px;">[Pendiente: cómo dejar la data lista para probar — scripts, data homologada, etc.]</p>
+    </div>
+  </div>
+
+  <!-- ================= DETAIL: EJECUCIÓN ================= -->
+  <div class="detail" id="detail-exec">
+    <button class="back-btn" onclick="showOverview()">← Volver al inicio</button>
+    <div class="detail-head exec">
+      <h2>Fase 2 · Ejecución<span class="todo">Pendiente</span></h2>
+      <p>[Pendiente] Pipeline automático que traslada la data de audiencia desde GCP hacia bd_promocion_audiencia.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num exec">1</div>
+        <div>
+          <h3>[Pendiente: nombre del paso]</h3>
+          <p class="service exec">[Pendiente: servicio GCP, ej. Cloud Scheduler / Pub/Sub / Dataflow / Cloud Functions]</p>
+          <p>[Pendiente: descripción del paso.]</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num exec">2</div>
+        <div>
+          <h3>[Pendiente: nombre del paso]</h3>
+          <p class="service exec">[Pendiente: servicio GCP]</p>
+          <p>[Pendiente: descripción del paso.]</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num exec">3</div>
+        <div>
+          <h3>[Pendiente: nombre del paso]</h3>
+          <p class="service exec">[Pendiente: servicio GCP]</p>
+          <p>[Pendiente: descripción del paso.]</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= DETAIL: VALIDACIÓN ================= -->
+  <div class="detail" id="detail-valid">
+    <button class="back-btn" onclick="showOverview()">← Volver al inicio</button>
+    <div class="detail-head valid">
+      <h2>Fase 3 · Validación<span class="todo">Pendiente</span></h2>
+      <p>[Pendiente] Verificación de que cada tabla/segmento de origen fue migrado correctamente a bd_promocion_audiencia.</p>
+    </div>
+
+    <div class="sub-section">
+      <h3>Criterio de aceptación<span class="todo">Pendiente</span></h3>
+      <ul class="crit-list valid">
+        <li>[Pendiente: criterio de aceptación 1.]</li>
+        <li>[Pendiente: criterio de aceptación 2.]</li>
+      </ul>
+    </div>
+
+    <div class="sub-section">
+      <h3 class="steps-title">Referencia técnica · Mapeo de tablas<span class="todo">Pendiente</span></h3>
+      <table class="ref-table">
+        <thead><tr><th>Tabla/segmento origen (GCP)</th><th>Tabla a validar (bd_promocion_audiencia)</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">[Pendiente]</td><td class="mono">[Pendiente]</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sub-section">
+      <h3>Casos de validación<span class="todo">Pendiente</span></h3>
+      <div class="case-card">
+          <div class="case-card-head"><h4>Caso 1 · [Pendiente: título]</h4><span class="case-tag happy">Happy path</span></div>
+          <div class="case-field"><div class="label">Precondición</div><div>[Pendiente]</div></div>
+          <div class="case-field"><div class="label">Acción / Query</div><div>[Pendiente]</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>[Pendiente]</div></div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>Página en construcción · GCP a Audiencia</footer>
+</div>
+
+<script>
+function showDetail(phase){
+  document.getElementById('overview').classList.add('hidden');
+  document.querySelectorAll('.detail').forEach(function(d){ d.classList.remove('active'); });
+  document.getElementById('detail-' + phase).classList.add('active');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+function showOverview(){
+  document.querySelectorAll('.detail').forEach(function(d){ d.classList.remove('active'); });
+  document.getElementById('overview').classList.remove('hidden');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+</script>
+</body>
+</html>
