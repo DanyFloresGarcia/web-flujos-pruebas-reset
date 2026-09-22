@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flujo de migración: BD Audiencia a BD Ejecución</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F6F7F5;
+    --surface:#FFFFFF;
+    --border:#E1E4E0;
+    --text-primary:#1B1F1C;
+    --text-secondary:#5C625E;
+    --text-muted:#8A8F8B;
+
+    --teal-bg:#E1F5EE; --teal-text:#085041; --teal-border:#5DCAA5;
+    --coral-bg:#FAECE7; --coral-text:#712B13; --coral-border:#F0997B;
+    --amber-bg:#FAEEDA; --amber-text:#633806; --amber-border:#EF9F27;
+    --turquoise-bg:#E0F7FA; --turquoise-text:#0B5B66; --turquoise-border:#26C6DA;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text-primary);
+    font-family:'Inter', sans-serif;
+    line-height:1.6;
+    padding:40px 20px 80px;
+  }
+  .wrap{max-width:880px;margin:0 auto;}
+  h1,h2,h3{font-family:'Space Grotesk', sans-serif;font-weight:600;margin:0;}
+  .mono{font-family:'IBM Plex Mono', monospace;}
+
+  header{margin-bottom:20px;}
+  header h1{font-size:26px;color:var(--text-primary);}
+  header p{margin:8px 0 0;color:var(--text-secondary);font-size:15px;max-width:60ch;}
+
+  .flow-nav{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--text-secondary);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 16px;margin-bottom:36px;}
+  .flow-nav a{color:var(--text-primary);font-weight:600;text-decoration:none;}
+  .flow-nav a:hover{text-decoration:underline;}
+  .flow-nav .step{font-weight:600;color:var(--text-primary);}
+
+  /* ---- overview cards ---- */
+  #overview{display:flex;flex-direction:column;gap:14px;}
+  .phase-card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-left:5px solid var(--card-accent, #999);
+    border-radius:10px;
+    padding:20px 22px;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  .phase-card:hover{box-shadow:0 2px 10px rgba(0,0,0,0.06);}
+  .phase-card:focus-visible{outline:2px solid var(--card-accent,#999);outline-offset:2px;}
+  .phase-card .info h2{font-size:17px;}
+  .phase-card .info p{margin:6px 0 0;font-size:14px;color:var(--text-secondary);}
+  .phase-tag{
+    font-size:11px;
+    letter-spacing:.02em;
+    color:var(--card-accent-text,#555);
+    background:var(--card-accent-bg,#eee);
+    padding:3px 9px;
+    border-radius:20px;
+    display:inline-block;
+    margin-bottom:8px;
+  }
+  .chevron{font-size:20px;color:var(--text-muted);flex-shrink:0;}
+  .phase-card.pending{border-left-style:dashed;}
+
+  .prep{--card-accent:var(--teal-border); --card-accent-bg:var(--teal-bg); --card-accent-text:var(--teal-text);}
+  .exec{--card-accent:var(--coral-border); --card-accent-bg:var(--coral-bg); --card-accent-text:var(--coral-text);}
+  .valid{--card-accent:var(--turquoise-border); --card-accent-bg:var(--turquoise-bg); --card-accent-text:var(--turquoise-text);}
+
+  /* ---- detail views ---- */
+  .detail{display:none;}
+  .detail.active{display:block;}
+  #overview.hidden{display:none;}
+
+  .back-btn{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    color:var(--text-primary);
+    font-family:'Inter',sans-serif;
+    font-size:14px;
+    font-weight:500;
+    padding:9px 16px;
+    border-radius:8px;
+    cursor:pointer;
+    margin-bottom:24px;
+  }
+  .back-btn:hover{background:#F0F1EF;}
+
+  .detail-head{
+    border-radius:10px;
+    padding:18px 22px;
+    margin-bottom:24px;
+    border:1px solid var(--border);
+  }
+  .detail-head h2{font-size:19px;}
+  .detail-head p{margin:6px 0 0;font-size:14px;color:var(--text-secondary);}
+
+  .detail-head.prep{background:var(--teal-bg);border-color:var(--teal-border);}
+  .detail-head.prep h2{color:var(--teal-text);}
+  .detail-head.exec{background:var(--coral-bg);border-color:var(--coral-border);}
+  .detail-head.exec h2{color:var(--coral-text);}
+  .detail-head.valid{background:var(--turquoise-bg);border-color:var(--turquoise-border);}
+  .detail-head.valid h2{color:var(--turquoise-text);}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px;background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+  th{background:#F0F1EF;text-align:left;padding:10px 14px;font-weight:600;color:var(--text-secondary);font-size:12.5px;}
+  .ref-table th{background:var(--turquoise-bg);color:var(--turquoise-text);font-size:13.5px;font-weight:700;padding:12px 14px;}
+  td{padding:10px 14px;border-top:1px solid var(--border);vertical-align:top;}
+  tr:nth-child(even) td{background:#FAFBFA;}
+
+  .steps{display:flex;flex-direction:column;gap:0;}
+  .step{
+    display:flex;
+    gap:16px;
+    padding:16px 0;
+    border-bottom:1px solid var(--border);
+  }
+  .step:last-child{border-bottom:none;}
+  .step-num{
+    width:30px;height:30px;flex-shrink:0;
+    border-radius:50%;
+    background:var(--coral-bg);
+    color:var(--coral-text);
+    display:flex;align-items:center;justify-content:center;
+    font-size:13px;font-weight:600;font-family:'Space Grotesk',sans-serif;
+  }
+  .step-num.prep{background:var(--teal-bg);color:var(--teal-text);}
+  .step-num.valid{background:var(--turquoise-bg);color:var(--turquoise-text);}
+  .step h3{font-size:15px;margin-bottom:4px;}
+  .step p{margin:0;font-size:14px;color:var(--text-secondary);}
+  .step .service{font-size:12px;color:var(--coral-text);}
+  .step .service.prep{color:var(--teal-text);}
+  .step .service.valid{color:var(--turquoise-text);}
+
+  /* ---- sub-sections ---- */
+  .sub-section{margin-bottom:26px;}
+  .sub-section h3{font-size:14px;color:var(--text-secondary);margin-bottom:12px;}
+  .crit-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px;}
+  .crit-list li{position:relative;padding-left:18px;font-size:14px;color:var(--text-primary);}
+  .crit-list li::before{content:"";position:absolute;left:0;top:7px;width:6px;height:6px;border-radius:50%;background:var(--dot-color,#999);}
+  .crit-list.prep li::before{--dot-color:var(--teal-border);}
+  .crit-list.exec li::before{--dot-color:var(--coral-border);}
+  .crit-list.valid li::before{--dot-color:var(--turquoise-border);}
+  .steps-title{font-size:14px;color:var(--text-secondary);margin-bottom:12px;}
+
+  /* ---- casos de validación ---- */
+  .case-tag{display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap;}
+  .case-tag.happy{background:var(--teal-bg);color:var(--teal-text);}
+  .case-tag.negativo{background:var(--coral-bg);color:var(--coral-text);}
+  .case-tag.regresion{background:var(--turquoise-bg);color:var(--turquoise-text);}
+
+  .case-card{border:1px solid var(--border);border-radius:10px;padding:18px 20px;margin-bottom:14px;background:var(--surface);}
+  .case-card-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
+  .case-card-head h4{font-size:15px;font-family:'Space Grotesk',sans-serif;font-weight:600;color:var(--text-primary);}
+  .case-field{display:grid;grid-template-columns:130px 1fr;gap:8px;font-size:13.5px;padding:8px 0;border-top:1px solid var(--border);}
+  .case-field:first-of-type{border-top:none;}
+  .case-field .label{color:var(--text-secondary);font-weight:600;}
+
+  .note{font-size:13px;color:var(--text-muted);margin-top:14px;}
+  .note a{color:var(--text-secondary);}
+
+  .group-tag{display:inline-block;background:var(--teal-bg);color:var(--teal-text);font-size:11.5px;font-weight:700;letter-spacing:.02em;padding:5px 12px;border-radius:20px;margin:8px 0 16px;}
+  .group-tag.exec{background:var(--coral-bg);color:var(--coral-text);}
+  .group-tag.valid{background:var(--turquoise-bg);color:var(--turquoise-text);}
+  .group-divider{border-top:1px solid var(--border);margin-top:30px;padding-top:2px;}
+  .drive-link{display:inline-flex;align-items:center;gap:5px;color:var(--text-primary);font-weight:600;text-decoration:none;border-bottom:1px solid currentColor;}
+  .drive-link:hover{opacity:.75;}
+
+  footer{margin-top:48px;font-size:12.5px;color:var(--text-muted);text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Flujo de migración: BD Audiencia a BD Ejecución</h1>
+    <p>Guía de referencia para el proveedor. Tres etapas secuenciales, de inicio a fin. Haz clic en una etapa para ver el detalle técnico; el botón de regreso te trae de vuelta a esta vista.</p>
+  </header>
+
+  <div class="flow-nav">
+    <a href="../migracion-gcp-audiencia/">← Anterior: GCP → BD Audiencia</a>
+    <span><span class="step">Fase 2 de 3</span> · Motor de Audiencia</span>
+    <a href="../flujo-invitados-nuevos-calimaco/">Siguiente: Invitados Nuevos (Calimaco) →</a>
+  </div>
+
+  <div id="overview">
+    <div class="phase-card prep" tabindex="0" role="button" onclick="showDetail('prep')" onkeydown="if(event.key==='Enter')showDetail('prep')">
+      <div class="info">
+        <span class="phase-tag">Etapa 1</span>
+        <h2>Preparación</h2>
+        <p>Data disponible en bd_promocion_audiencia con la etapa PRE-EJECUCION y fecha apta.</p>
+      </div>
+      <span class="chevron">›</span>
+    </div>
+
+    <div class="phase-card exec" tabindex="0" role="button" onclick="showDetail('exec')" onkeydown="if(event.key==='Enter')showDetail('exec')">
+      <div class="info">
+        <span class="phase-tag">Etapa 2</span>
+        <h2>Ejecución</h2>
+        <p>Orquestación 100% AWS (EventBridge + Fargate) que traslada la audiencia hacia bd_promocion_ejecucion.</p>
+      </div>
+      <span class="chevron">›</span>
+    </div>
+
+    <div class="phase-card valid" tabindex="0" role="button" onclick="showDetail('valid')" onkeydown="if(event.key==='Enter')showDetail('valid')">
+      <div class="info">
+        <span class="phase-tag">Etapa 3</span>
+        <h2>Validación</h2>
+        <p>Casos de prueba sobre las tablas trx_audiencia y trx_participante en bd_promocion_ejecucion.</p>
+      </div>
+      <span class="chevron">›</span>
+    </div>
+  </div>
+
+  <!-- ================= DETAIL: PREPARACIÓN ================= -->
+  <div class="detail" id="detail-prep">
+    <button class="back-btn" onclick="showOverview()">← Volver al inicio</button>
+    <div class="detail-head prep">
+      <h2>Etapa 1 · Preparación</h2>
+      <p>Asegura que los datos y los estados del sistema estén listos en el servidor de origen antes de que AWS EventBridge inicie el flujo.</p>
+    </div>
+
+    <div class="sub-section">
+      <h3>Accesos y permisos</h3>
+      <p style="font-size:13.5px;color:var(--text-secondary);margin:0 0 8px;">Este flujo es 100% AWS y reutiliza en su mayoría los accesos ya otorgados en el flujo de Migración Configuración→Ejecución.</p>
+      <ul class="crit-list prep">
+        <li><strong>Ya cubierto:</strong> EventBridge y Fargate ya están otorgados por el flujo anterior — validar que el rol del Fargate tenga permiso sobre el contenedor <span class="mono">migracion_audiencia</span> y sobre las dos bases: <span class="mono">bd_promocion_audiencia</span> (origen) y <span class="mono">bd_promocion_ejecucion</span> (destino).</li>
+        <li><strong>Nuevo:</strong> acceso de BD a <span class="mono">bd_promocion_audiencia</span> — es una base que no existía en el flujo de Configuración→Ejecución, así que su acceso (lectura para Fargate, y de BD para pruebas) hay que solicitarlo aparte.</li>
+      </ul>
+    </div>
+
+    <div class="sub-section">
+      <h3>Checklist de preparación</h3>
+      <ul class="crit-list prep">
+        <li><strong>Disponibilidad de datos:</strong> confirmar que la data esté correctamente cargada en la base de datos de origen (<span class="mono">bd_promocion_audiencia</span>), específicamente dentro de la tabla <span class="mono">[sch_cfg_migracion].[trx_audiencia]</span>.</li>
+        <li><strong>Estado de la promoción:</strong> validar que el motor de configuración se haya ejecutado previamente. Los registros o la promoción deben contar obligatoriamente con la etapa <span class="mono">PRE-EJECUCION</span>.</li>
+        <li><strong>Criterio de fecha:</strong> comprobar que la fecha asociada a la pre-ejecución sea una "fecha apta" (actual y válida dentro de la vigencia) para permitir la migración de la audiencia.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ================= DETAIL: EJECUCIÓN ================= -->
+  <div class="detail" id="detail-exec">
+    <button class="back-btn" onclick="showOverview()">← Volver al inicio</button>
+    <div class="detail-head exec">
+      <h2>Etapa 2 · Ejecución</h2>
+      <p>Se enfoca estrictamente en el flujo de orquestación y procesamiento de AWS.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num exec">1</div>
+        <div>
+          <h3>Disparo</h3>
+          <p class="service exec">AWS EventBridge</p>
+          <p>Validar que Amazon EventBridge lance el evento programado para las 11:00 PM.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num exec">2</div>
+        <div>
+          <h3>Procesamiento</h3>
+          <p class="service exec">AWS Fargate</p>
+          <p>Confirmar que el evento inicie exitosamente la tarea de contenedor AWS Fargate <span class="mono">migracion_audiencia</span>.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num exec">3</div>
+        <div>
+          <h3>Extracción y carga</h3>
+          <p class="service exec">AWS Fargate</p>
+          <p>Validar que el Fargate ejecute la acción de EXTRAE sobre <span class="mono">bd_promocion_audiencia</span> y, tras procesar, ejecute la acción de CARGA apuntando a la base de datos de destino <span class="mono">bd_promocion_ejecucion</span>.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= DETAIL: VALIDACIÓN ================= -->
+  <div class="detail" id="detail-valid">
+    <button class="back-btn" onclick="showOverview()">← Volver al inicio</button>
+    <div class="detail-head valid">
+      <h2>Etapa 3 · Validación</h2>
+      <p>Se revisan los resultados de la migración consultando directamente el motor de base de datos destino (<span class="mono">bd_promocion_ejecucion</span>), enfocándose en las tablas transaccionales solicitadas.</p>
+    </div>
+
+    <div class="sub-section">
+      <h3>Casos de prueba</h3>
+      <div class="case-card">
+          <div class="case-card-head"><h4>CP 01 · Carga exitosa en tablas destino</h4><span class="case-tag happy">Happy path</span></div>
+          <div class="case-field"><div class="label">Acción / Query</div><div>Consultar las tablas <span class="mono">trx_audiencia</span> y <span class="mono">trx_participante</span> en <span class="mono">bd_promocion_ejecucion</span>.</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>Todos los registros que tenían la etapa PRE-EJECUCION y fecha apta se hayan insertado correctamente en ambas tablas tras finalizar la ejecución del Fargate.</div></div>
+      </div>
+
+      <div class="case-card">
+          <div class="case-card-head"><h4>CP 02 · Integridad relacional</h4><span class="case-tag happy">Happy path</span></div>
+          <div class="case-field"><div class="label">Acción / Query</div><div>Comparar los registros insertados en <span class="mono">trx_audiencia</span> y <span class="mono">trx_participante</span> contra el origen.</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>Sin pérdida de datos, y los atributos de cada participante se hayan mapeado según la regla de negocio.</div></div>
+      </div>
+
+      <div class="case-card">
+          <div class="case-card-head"><h4>CP 01 · Falta de conexión Fargate a BD Audiencia</h4><span class="case-tag negativo">Negativo</span></div>
+          <div class="case-field"><div class="label">Acción / Query</div><div>Simular un bloqueo de red o credenciales inválidas entre el contenedor AWS Fargate <span class="mono">migracion_audiencia</span> y la base de datos de origen (<span class="mono">bd_promocion_audiencia</span>). Detonar el evento.</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>El proceso falla de manera controlada sin afectar el destino, y el error de conexión al origen queda registrado en los logs de CloudWatch.</div></div>
+      </div>
+
+      <div class="case-card">
+          <div class="case-card-head"><h4>CP 02 · Falta de conexión Fargate a BD Ejecución</h4><span class="case-tag negativo">Negativo</span></div>
+          <div class="case-field"><div class="label">Acción / Query</div><div>Simular una caída temporal o restricción de red hacia la base de datos de destino (<span class="mono">bd_promocion_ejecucion</span>). Detonar el evento.</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>Aunque Fargate logre extraer la data del origen, aborta la operación en la fase de carga (CARGA) de forma segura, reportando el fallo de conexión a destino en los logs.</div></div>
+      </div>
+
+      <div class="case-card">
+          <div class="case-card-head"><h4>CP 03 · Etapa inactiva y fuera de horario</h4><span class="case-tag negativo">Negativo</span></div>
+          <div class="case-field"><div class="label">Acción / Query</div><div>Al momento de intentar realizar la carga, configurar la promoción en el origen para que la etapa PRE-EJECUCION ya no se encuentre activa y su horario no sea el apto.</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>En la BD Ejecución los registros no se insertan en las tablas <span class="mono">trx_audiencia</span> ni <span class="mono">trx_participante</span>, confirmando que el proceso verifica y respeta estas condiciones en el momento exacto de la carga.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>Motor de Audiencia · Fase 2 de 3 — BD Audiencia a BD Ejecución</footer>
+</div>
+
+<script>
+function showDetail(phase){
+  document.getElementById('overview').classList.add('hidden');
+  document.querySelectorAll('.detail').forEach(function(d){ d.classList.remove('active'); });
+  document.getElementById('detail-' + phase).classList.add('active');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+function showOverview(){
+  document.querySelectorAll('.detail').forEach(function(d){ d.classList.remove('active'); });
+  document.getElementById('overview').classList.remove('hidden');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+</script>
+</body>
+</html>
