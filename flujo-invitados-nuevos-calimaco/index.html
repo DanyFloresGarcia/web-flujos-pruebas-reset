@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Flujo de migración: GCP a BD Promoción Audiencia</title>
+<title>Flujo: Registro de Invitados Nuevos (Calimaco)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
 <style>
@@ -187,13 +187,13 @@
 <div class="wrap">
 
   <header>
-    <h1>Flujo de migración: GCP a BD Promoción Audiencia</h1>
-    <p>Guía de referencia para el proveedor. Tres etapas secuenciales, de inicio a fin. Haz clic en una etapa para ver el detalle técnico; el botón de regreso te trae de vuelta a esta vista.</p>
+    <h1>Registro y Sincronización de Invitados Nuevos (Flujo Calimaco)</h1>
+    <p>Guía de referencia para el proveedor. A diferencia de las fases 1 y 2, este flujo no es batch: se dispara en tiempo real por cada invitado nuevo creado en la web del casino. Haz clic en una etapa para ver el detalle técnico; el botón de regreso te trae de vuelta a esta vista.</p>
   </header>
 
   <div class="flow-nav">
-    <span><span class="step">Fase 1 de 3</span> · Motor de Audiencia</span>
-    <a href="../migracion-audiencia-ejecucion/">Siguiente: BD Audiencia → BD Ejecución →</a>
+    <a href="../migracion-audiencia-ejecucion/">← Anterior: BD Audiencia → BD Ejecución</a>
+    <span><span class="step">Fase 3 de 3</span> · Motor de Audiencia</span>
   </div>
 
   <div id="overview">
@@ -201,7 +201,7 @@
       <div class="info">
         <span class="phase-tag">Etapa 1</span>
         <h2>Preparación</h2>
-        <p>Infraestructura GCP/AWS lista y generación de la data de origen en bd_promocion_configuracion.</p>
+        <p>Etapas previas migradas y admisión activa en bd_promocion_ejecucion.</p>
       </div>
       <span class="chevron">›</span>
     </div>
@@ -210,7 +210,7 @@
       <div class="info">
         <span class="phase-tag">Etapa 2</span>
         <h2>Ejecución</h2>
-        <p>Orquestador en GCP (workflow-col-promocion-audiencias-procesar-ingesta) que ingesta, procesa y envía la audiencia a AWS.</p>
+        <p>Webhook Calimaco → API Gateway → Lambda Orquestador → SNS/SQS → Lambda de carga final.</p>
       </div>
       <span class="chevron">›</span>
     </div>
@@ -219,7 +219,7 @@
       <div class="info">
         <span class="phase-tag">Etapa 3</span>
         <h2>Validación</h2>
-        <p>Casos de prueba sobre bd_promocion_audiencia en AWS.</p>
+        <p>Casos de prueba end-to-end y de manejo de errores del registro de invitados.</p>
       </div>
       <span class="chevron">›</span>
     </div>
@@ -230,15 +230,15 @@
     <button class="back-btn" onclick="showOverview()">← Volver al inicio</button>
     <div class="detail-head prep">
       <h2>Etapa 1 · Preparación</h2>
-      <p>Asegura que el entorno de datos e infraestructura cumpla con los prerrequisitos exactos antes de iniciar el flujo.</p>
+      <p>Condiciones que deben estar dadas en bd_promocion_ejecucion y en el entorno de origen antes de registrar un invitado nuevo.</p>
     </div>
 
     <div class="sub-section">
       <h3>Checklist de preparación</h3>
       <ul class="crit-list prep">
-        <li><strong>Infraestructura:</strong> validar que los componentes involucrados tanto en GCP como en AWS (EventBridge, Lambda, SQS, Fargate) estén desplegados, operativos y con los permisos de red/IAM necesarios para interactuar entre sí.</li>
-        <li><strong>Generación de datos:</strong> ejecutar el procedimiento almacenado <span class="mono">[sch_cfg_audiencia].[usp_audiencia_promocion_segmento_invitado_generar]</span>.</li>
-        <li><strong>Validación de origen:</strong> confirmar que la ejecución del SP haya poblado correctamente la tabla <span class="mono">[sch_cfg_audiencia].[dts_audiencia_promocion_segmento]</span>.</li>
+        <li><strong>Estado base de datos:</strong> validar que las etapas previas ya estén migradas en <span class="mono">bd_promocion_ejecucion</span>.</li>
+        <li><strong>Regla de negocio (Admisión):</strong> confirmar en la base de datos de ejecución que la etapa de admisión se encuentre en estado activa y con la fecha apta, permitiendo el ingreso de nuevos registros.</li>
+        <li><strong>Generación de origen:</strong> preparar el entorno de la web del casino para la creación de un nuevo invitado, teniendo listos los datos (payload) que enviará el Webhook.</li>
       </ul>
     </div>
   </div>
@@ -248,39 +248,39 @@
     <button class="back-btn" onclick="showOverview()">← Volver al inicio</button>
     <div class="detail-head exec">
       <h2>Etapa 2 · Ejecución</h2>
-      <p>Valida el paso a paso del orquestador en GCP (<span class="mono">workflow-col-promocion-audiencias-procesar-ingesta</span>) y su interacción con la infraestructura de AWS.</p>
+      <p>Flujo disparado por evento (no programado) desde el Webhook de Calimaco hasta la carga final en bd_promocion_ejecucion.</p>
     </div>
     <div class="steps">
       <div class="step">
         <div class="step-num exec">1</div>
         <div>
-          <h3>Disparo (Trigger)</h3>
-          <p class="service exec">Cloud Scheduler</p>
-          <p>Confirmar que el Cloud Scheduler (<span class="mono">cschedule-col-promocion-audiencias-trigger-ingesta</span>) detone el inicio del flujo a las 10:00 PM (o mediante ejecución manual).</p>
+          <h3>Ingesta y validación de header</h3>
+          <p class="service exec">Calimaco → API Gateway</p>
+          <p>Validar que el Amazon API Gateway se encuentre desplegado y operativo. Validar la creación del invitado y que el Webhook Calimaco envíe la petición al API Gateway incluyendo estrictamente el header <span class="mono">X-Amz-Invocation-Type: Event</span>. Validar que el API Gateway acepte la petición asíncrona retornando un código de estado HTTP 201.</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num exec">2</div>
         <div>
-          <h3>Paso 1 · Ingesta</h3>
-          <p class="service exec">Cloud Run</p>
-          <p>Validar que Workflows invoque el primer servicio de Cloud Run (<span class="mono">fn-accty-ingesta-rBc4-mysql</span>). Este debe recuperar sus credenciales desde Secret Manager, conectarse vía VPN a la <span class="mono">bd_promocion_configuracion</span> en AWS, extraer los datos y almacenarlos en la capa raw.</p>
+          <h3>Orquestación y envío</h3>
+          <p class="service exec">Lambda + DynamoDB</p>
+          <p>Validar que la función AWS Lambda "Orquestador Invitados Nuevos COL" y la tabla de Amazon DynamoDB (<span class="mono">col-audiencia_invitados_nuevos</span>) se encuentren desplegadas.</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num exec">3</div>
         <div>
-          <h3>Paso 2 · Procesamiento</h3>
-          <p class="service exec">BigQuery SP</p>
-          <p>Validar que Workflows inicie la ejecución del Stored Procedure <span class="mono">sp_promocion_audiencia_col</span> para procesar y cruzar la información extraída.</p>
+          <h3>Mensajería</h3>
+          <p class="service exec">SNS / SQS</p>
+          <p>Confirmar que el tema de Amazon SNS y la cola de Amazon SQS correspondiente estén desplegados. Comprobar que el flujo publique el evento en SNS y este lo enrute correctamente hacia la SQS.</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num exec">4</div>
         <div>
-          <h3>Paso 3 · Envío de audiencia</h3>
-          <p class="service exec">Cloud Run</p>
-          <p>Validar que Workflows invoque el segundo servicio de Cloud Run (<span class="mono">fn-col-promocion-audiencias-enviar-audiencia</span>) para que extraiga los datos procesados y realice la carga final hacia la <span class="mono">bd_promocion_audiencia</span> en AWS.</p>
+          <h3>Consumo y carga final</h3>
+          <p class="service exec">Lambda</p>
+          <p>Validar que la función AWS Lambda "Asignación de Promociones" esté desplegada. Validar que esta función consuma el mensaje de SQS y ejecute el registro final del invitado en las tablas de <span class="mono">bd_promocion_ejecucion</span> (audiencia y participante).</p>
         </div>
       </div>
     </div>
@@ -291,32 +291,44 @@
     <button class="back-btn" onclick="showOverview()">← Volver al inicio</button>
     <div class="detail-head valid">
       <h2>Etapa 3 · Validación</h2>
-      <p>Se revisan los resultados de la migración directamente consultando el motor de base de datos de destino en AWS (<span class="mono">bd_promocion_audiencia</span>).</p>
+      <p>Casos de prueba end-to-end y de manejo de errores en cada punto de falla del flujo.</p>
     </div>
 
     <div class="sub-section">
       <h3>Casos de prueba</h3>
       <div class="case-card">
-          <div class="case-card-head"><h4>CP_F1_POS_01 · Carga exitosa</h4><span class="case-tag happy">Happy path</span></div>
-          <div class="case-field"><div class="label">Acción / Query</div><div>Consultar la tabla <span class="mono">[sch_cfg_migracion].[trx_audiencia]</span> en la BD Audiencia.</div></div>
-          <div class="case-field"><div class="label">Resultado esperado</div><div>Los registros correspondientes a la promoción procesada se hayan insertado correctamente al finalizar el flujo.</div></div>
+          <div class="case-card-head"><h4>CP01 · Registro completo E2E</h4><span class="case-tag happy">Happy path</span></div>
+          <div class="case-field"><div class="label">Acción / Query</div><div>Enviar el registro de un invitado válido desde la web del casino asegurando la presencia del header <span class="mono">X-Amz-Invocation-Type: Event</span>.</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>Confirmar la respuesta 201 del API Gateway. Validar la existencia del registro en DynamoDB y que las tablas <span class="mono">trx_audiencia</span> y <span class="mono">trx_participante</span> en <span class="mono">bd_promocion_ejecucion</span> contengan la información del invitado sin pérdida de datos.</div></div>
       </div>
 
       <div class="case-card">
-          <div class="case-card-head"><h4>CP_F1_POS_02 · Integridad de datos</h4><span class="case-tag happy">Happy path</span></div>
-          <div class="case-field"><div class="label">Acción / Query</div><div>Comparar una muestra de registros en <span class="mono">[sch_cfg_migracion].[trx_audiencia]</span> (BD Audiencia) contra los datos que se originaron.</div></div>
-          <div class="case-field"><div class="label">Resultado esperado</div><div>La información de los segmentos, invitados y promociones no presenta truncamientos, valores nulos inesperados o pérdida de caracteres especiales.</div></div>
+          <div class="case-card-head"><h4>CP01 · Fallo de invocación por header ausente/inválido</h4><span class="case-tag negativo">Negativo</span></div>
+          <div class="case-field"><div class="label">Acción / Query</div><div>Enviar el payload desde el Webhook de Calimaco hacia el API Gateway omitiendo el header <span class="mono">X-Amz-Invocation-Type: Event</span> (o enviando un valor incorrecto como <span class="mono">RequestResponse</span>).</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>La petición es rechazada (no retorna 201) y no se inicia el flujo hacia la Lambda orquestadora ni se registra nada en DynamoDB.</div></div>
       </div>
 
       <div class="case-card">
-          <div class="case-card-head"><h4>CP_NEG_01 · Fallo de inserción / rollback</h4><span class="case-tag negativo">Negativo</span></div>
-          <div class="case-field"><div class="label">Acción / Query</div><div>Forzar un error en medio de la carga final (desconexión con la BD).</div></div>
-          <div class="case-field"><div class="label">Resultado esperado</div><div>En la BD Audiencia no existen registros parciales, huérfanos o corruptos en <span class="mono">[sch_cfg_migracion].[trx_audiencia]</span>, asegurando la atomicidad de la carga.</div></div>
+          <div class="case-card-head"><h4>CP02 · Flujo de error y alerta en Google Chat</h4><span class="case-tag negativo">Negativo</span></div>
+          <div class="case-field"><div class="label">Acción / Query</div><div>Inyectar un payload malformado que supere la validación inicial pero haga fallar al AWS Lambda Orquestador.</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>El error detona el flujo hacia la SQS de errores, invocando al lambda-notificador, y la alerta llega exitosamente al Google Chat Webhook.</div></div>
+      </div>
+
+      <div class="case-card">
+          <div class="case-card-head"><h4>CP03 · Fallo de inserción en BD destino</h4><span class="case-tag negativo">Negativo</span></div>
+          <div class="case-field"><div class="label">Acción / Query</div><div>Simular un error de credenciales entre la Lambda Suscriptor y la <span class="mono">bd_promocion_ejecucion</span>.</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>El participante no se registra, y el mensaje pasa a la cola de mensajes muertos (<span class="mono">sqs-col-audiencia-invitados_nuevos_dlq</span>) para evitar pérdida de datos.</div></div>
+      </div>
+
+      <div class="case-card">
+          <div class="case-card-head"><h4>CP04 · Etapa de admisión inactiva</h4><span class="case-tag negativo">Negativo</span></div>
+          <div class="case-field"><div class="label">Acción / Query</div><div>Configurar la base de datos de ejecución para que la etapa de admisión esté inactiva. Detonar la creación de un invitado válido desde la web.</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>Aunque se registre en DynamoDB (si la lógica lo permite allí), el sistema final rechaza la inserción en las tablas de <span class="mono">bd_promocion_ejecucion</span>, respetando la regla de negocio.</div></div>
       </div>
     </div>
   </div>
 
-  <footer>Motor de Audiencia · Fase 1 de 3 — GCP a BD Promoción Audiencia</footer>
+  <footer>Motor de Audiencia · Fase 3 de 3 — Registro de Invitados Nuevos (Calimaco)</footer>
 </div>
 
 <script>
