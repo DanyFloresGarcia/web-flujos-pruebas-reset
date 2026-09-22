@@ -234,6 +234,17 @@
     </div>
 
     <div class="sub-section">
+      <h3>Accesos y permisos</h3>
+      <p style="font-size:13.5px;color:var(--text-secondary);margin:0 0 8px;">Este flujo no parte de cero: reutiliza los accesos AWS ya otorgados en el flujo de Migración Configuración→Ejecución. Lo nuevo está del lado de GCP.</p>
+      <ul class="crit-list prep">
+        <li><strong>Nuevo (GCP):</strong> permisos IAM en el proyecto de GCP para Cloud Scheduler, Cloud Run (los dos servicios: ingesta y envío de audiencia), ejecución de Stored Procedures en BigQuery, y Secret Manager de GCP.</li>
+        <li><strong>Nuevo:</strong> conexión VPN entre GCP y AWS, para que el Cloud Run de ingesta pueda acceder a <span class="mono">bd_promocion_configuracion</span>.</li>
+        <li><strong>Ya cubierto (AWS):</strong> EventBridge, Lambda, SQS y Fargate ya están otorgados por el flujo anterior — validar únicamente que incluyan los recursos específicos de este flujo (si aplica un Fargate task nuevo).</li>
+      </ul>
+      <p class="note">Pendiente confirmar con Arquitectura/Plataforma quién otorga los accesos de GCP — el flujo anterior solo cubrió infraestructura AWS.</p>
+    </div>
+
+    <div class="sub-section">
       <h3>Checklist de preparación</h3>
       <ul class="crit-list prep">
         <li><strong>Infraestructura:</strong> validar que los componentes involucrados tanto en GCP como en AWS (EventBridge, Lambda, SQS, Fargate) estén desplegados, operativos y con los permisos de red/IAM necesarios para interactuar entre sí.</li>

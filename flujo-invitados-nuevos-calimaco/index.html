@@ -234,6 +234,17 @@
     </div>
 
     <div class="sub-section">
+      <h3>Accesos y permisos</h3>
+      <p style="font-size:13.5px;color:var(--text-secondary);margin:0 0 8px;">Este flujo reutiliza la mayoría de servicios AWS ya otorgados, pero introduce componentes nuevos.</p>
+      <ul class="crit-list prep">
+        <li><strong>Ya cubierto:</strong> API Gateway, Lambda, SNS, SQS y CloudWatch ya están otorgados por el flujo de Migración Configuración→Ejecución.</li>
+        <li><strong>Nuevo:</strong> Amazon DynamoDB (tabla <span class="mono">col-audiencia_invitados_nuevos</span>) — no estaba contemplada en los accesos anteriores, hay que solicitarla aparte.</li>
+        <li><strong>Nuevo:</strong> integración saliente hacia el Webhook de Google Chat (para las alertas de error) — validar si requiere whitelist de red saliente o alguna credencial adicional.</li>
+        <li><strong>Nuevo:</strong> acceso a la cola de mensajes muertos (<span class="mono">sqs-col-audiencia-invitados_nuevos_dlq</span>) para revisar fallos de inserción.</li>
+      </ul>
+    </div>
+
+    <div class="sub-section">
       <h3>Checklist de preparación</h3>
       <ul class="crit-list prep">
         <li><strong>Estado base de datos:</strong> validar que las etapas previas ya estén migradas en <span class="mono">bd_promocion_ejecucion</span>.</li>

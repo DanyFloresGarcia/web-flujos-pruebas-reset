@@ -235,6 +235,15 @@
     </div>
 
     <div class="sub-section">
+      <h3>Accesos y permisos</h3>
+      <p style="font-size:13.5px;color:var(--text-secondary);margin:0 0 8px;">Este flujo es 100% AWS y reutiliza en su mayoría los accesos ya otorgados en el flujo de Migración Configuración→Ejecución.</p>
+      <ul class="crit-list prep">
+        <li><strong>Ya cubierto:</strong> EventBridge y Fargate ya están otorgados por el flujo anterior — validar que el rol del Fargate tenga permiso sobre el contenedor <span class="mono">migracion_audiencia</span> y sobre las dos bases: <span class="mono">bd_promocion_audiencia</span> (origen) y <span class="mono">bd_promocion_ejecucion</span> (destino).</li>
+        <li><strong>Nuevo:</strong> acceso de BD a <span class="mono">bd_promocion_audiencia</span> — es una base que no existía en el flujo de Configuración→Ejecución, así que su acceso (lectura para Fargate, y de BD para pruebas) hay que solicitarlo aparte.</li>
+      </ul>
+    </div>
+
+    <div class="sub-section">
       <h3>Checklist de preparación</h3>
       <ul class="crit-list prep">
         <li><strong>Disponibilidad de datos:</strong> confirmar que la data esté correctamente cargada en la base de datos de origen (<span class="mono">bd_promocion_audiencia</span>), específicamente dentro de la tabla <span class="mono">[sch_cfg_migracion].[trx_audiencia]</span>.</li>
