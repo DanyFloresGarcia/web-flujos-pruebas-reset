@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flujo de Canje de Opciones</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F6F7F5;
+    --surface:#FFFFFF;
+    --border:#E1E4E0;
+    --text-primary:#1B1F1C;
+    --text-secondary:#5C625E;
+    --text-muted:#8A8F8B;
+
+    --teal-bg:#E1F5EE; --teal-text:#085041; --teal-border:#5DCAA5;
+    --coral-bg:#FAECE7; --coral-text:#712B13; --coral-border:#F0997B;
+    --amber-bg:#FAEEDA; --amber-text:#633806; --amber-border:#EF9F27;
+    --turquoise-bg:#E0F7FA; --turquoise-text:#0B5B66; --turquoise-border:#26C6DA;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text-primary);
+    font-family:'Inter', sans-serif;
+    line-height:1.6;
+    padding:40px 20px 80px;
+  }
+  .wrap{max-width:880px;margin:0 auto;}
+  h1,h2,h3{font-family:'Space Grotesk', sans-serif;font-weight:600;margin:0;}
+  .mono{font-family:'IBM Plex Mono', monospace;}
+
+  header{margin-bottom:20px;}
+  header h1{font-size:26px;color:var(--text-primary);}
+  header p{margin:8px 0 0;color:var(--text-secondary);font-size:15px;max-width:62ch;}
+
+  .module-tag{display:inline-flex;align-items:center;gap:12px;font-size:13px;color:var(--text-secondary);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 16px;margin-bottom:36px;}
+  .module-tag strong{color:var(--text-primary);}
+
+  /* ---- overview cards ---- */
+  #overview{display:flex;flex-direction:column;gap:14px;}
+  .phase-card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-left:5px solid var(--card-accent, #999);
+    border-radius:10px;
+    padding:20px 22px;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  .phase-card:hover{box-shadow:0 2px 10px rgba(0,0,0,0.06);}
+  .phase-card:focus-visible{outline:2px solid var(--card-accent,#999);outline-offset:2px;}
+  .phase-card .info h2{font-size:17px;}
+  .phase-card .info p{margin:6px 0 0;font-size:14px;color:var(--text-secondary);}
+  .phase-tag{
+    font-size:11px;
+    letter-spacing:.02em;
+    color:var(--card-accent-text,#555);
+    background:var(--card-accent-bg,#eee);
+    padding:3px 9px;
+    border-radius:20px;
+    display:inline-block;
+    margin-bottom:8px;
+  }
+  .chevron{font-size:20px;color:var(--text-muted);flex-shrink:0;}
+  .phase-card.pending{border-left-style:dashed;}
+
+  .prep{--card-accent:var(--teal-border); --card-accent-bg:var(--teal-bg); --card-accent-text:var(--teal-text);}
+  .exec{--card-accent:var(--coral-border); --card-accent-bg:var(--coral-bg); --card-accent-text:var(--coral-text);}
+  .valid{--card-accent:var(--turquoise-border); --card-accent-bg:var(--turquoise-bg); --card-accent-text:var(--turquoise-text);}
+
+  /* ---- detail views ---- */
+  .detail{display:none;}
+  .detail.active{display:block;}
+  #overview.hidden{display:none;}
+
+  .back-btn{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    color:var(--text-primary);
+    font-family:'Inter',sans-serif;
+    font-size:14px;
+    font-weight:500;
+    padding:9px 16px;
+    border-radius:8px;
+    cursor:pointer;
+    margin-bottom:24px;
+  }
+  .back-btn:hover{background:#F0F1EF;}
+
+  .detail-head{
+    border-radius:10px;
+    padding:18px 22px;
+    margin-bottom:24px;
+    border:1px solid var(--border);
+  }
+  .detail-head h2{font-size:19px;}
+  .detail-head p{margin:6px 0 0;font-size:14px;color:var(--text-secondary);}
+
+  .detail-head.prep{background:var(--teal-bg);border-color:var(--teal-border);}
+  .detail-head.prep h2{color:var(--teal-text);}
+  .detail-head.exec{background:var(--coral-bg);border-color:var(--coral-border);}
+  .detail-head.exec h2{color:var(--coral-text);}
+  .detail-head.valid{background:var(--turquoise-bg);border-color:var(--turquoise-border);}
+  .detail-head.valid h2{color:var(--turquoise-text);}
+
+  .steps{display:flex;flex-direction:column;gap:0;}
+  .step{
+    display:flex;
+    gap:16px;
+    padding:16px 0;
+    border-bottom:1px solid var(--border);
+  }
+  .step:last-child{border-bottom:none;}
+  .step-num{
+    width:30px;height:30px;flex-shrink:0;
+    border-radius:50%;
+    background:var(--coral-bg);
+    color:var(--coral-text);
+    display:flex;align-items:center;justify-content:center;
+    font-size:13px;font-weight:600;font-family:'Space Grotesk',sans-serif;
+  }
+  .step h3{font-size:15px;margin-bottom:4px;}
+  .step p{margin:0;font-size:14px;color:var(--text-secondary);}
+  .step .service{font-size:12px;color:var(--coral-text);}
+
+  /* ---- sub-sections ---- */
+  .sub-section{margin-bottom:26px;}
+  .sub-section h3{font-size:14px;color:var(--text-secondary);margin-bottom:12px;}
+  .crit-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px;}
+  .crit-list li{position:relative;padding-left:18px;font-size:14px;color:var(--text-primary);}
+  .crit-list li::before{content:"";position:absolute;left:0;top:7px;width:6px;height:6px;border-radius:50%;background:var(--dot-color,#999);}
+  .crit-list.prep li::before{--dot-color:var(--teal-border);}
+  .crit-list.sub{margin:8px 0 0 4px;gap:6px;}
+  .crit-list.sub li{font-size:13.5px;}
+  .crit-list.sub li::before{width:5px;height:5px;top:7px;}
+  .steps-title{font-size:14px;color:var(--text-secondary);margin-bottom:12px;}
+
+  /* ---- casos de validación ---- */
+  .case-tag{display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap;}
+  .case-tag.happy{background:var(--teal-bg);color:var(--teal-text);}
+  .case-tag.negativo{background:var(--coral-bg);color:var(--coral-text);}
+
+  .case-card{border:1px solid var(--border);border-radius:10px;padding:18px 20px;margin-bottom:14px;background:var(--surface);}
+  .case-card-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
+  .case-card-head h4{font-size:15px;font-family:'Space Grotesk',sans-serif;font-weight:600;color:var(--text-primary);}
+  .case-field{display:grid;grid-template-columns:130px 1fr;gap:8px;font-size:13.5px;padding:8px 0;border-top:1px solid var(--border);}
+  .case-field:first-of-type{border-top:none;}
+  .case-field .label{color:var(--text-secondary);font-weight:600;}
+
+  .note{font-size:13px;color:var(--text-muted);margin-top:14px;}
+  .note a{color:var(--text-secondary);}
+
+  .group-tag{display:inline-block;background:var(--teal-bg);color:var(--teal-text);font-size:11.5px;font-weight:700;letter-spacing:.02em;padding:5px 12px;border-radius:20px;margin:8px 0 16px;}
+  .group-tag.exec{background:var(--coral-bg);color:var(--coral-text);}
+  .group-tag.valid{background:var(--turquoise-bg);color:var(--turquoise-text);}
+  .group-divider{border-top:1px solid var(--border);margin-top:30px;padding-top:2px;}
+
+  .env-tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.02em;padding:4px 11px;border-radius:6px;margin:16px 0 10px;background:#E7E9E7;color:var(--text-secondary);}
+  .env-tag.qa{background:var(--teal-bg);color:var(--teal-text);}
+  .env-tag.dev{background:#EDE9FE;color:#5B21B6;}
+  .env-tag:first-of-type{margin-top:6px;}
+
+  footer{margin-top:48px;font-size:12.5px;color:var(--text-muted);text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Flujo de Canje de Opciones</h1>
+    <p>Guía de referencia para el proveedor. Validar el correcto funcionamiento del flujo end-to-end de canje de opciones, garantizando la consistencia de datos en los esquemas de configuración, proyección, puntaje y canje.</p>
+  </header>
+
+  <div class="module-tag"><strong>Módulo:</strong> Promociones y Fidelización (Canjes)</div>
+
+  <div id="overview">
+    <div class="phase-card prep" tabindex="0" role="button" onclick="showDetail('prep')" onkeydown="if(event.key==='Enter')showDetail('prep')">
+      <div class="info">
+        <span class="phase-tag">Fase 1</span>
+        <h2>Preparación</h2>
+        <p>Etapa y opciones configuradas, participantes con puntaje acumulado, y escalabilidad de salto de opciones lista.</p>
+      </div>
+      <span class="chevron">›</span>
+    </div>
+
+    <div class="phase-card exec" tabindex="0" role="button" onclick="showDetail('exec')" onkeydown="if(event.key==='Enter')showDetail('exec')">
+      <div class="info">
+        <span class="phase-tag">Fase 2</span>
+        <h2>Ejecución</h2>
+        <p>Flujo front-end de canje, con controles de concurrencia e idempotencia en Redis antes de escribir en BD.</p>
+      </div>
+      <span class="chevron">›</span>
+    </div>
+
+    <div class="phase-card valid" tabindex="0" role="button" onclick="showDetail('valid')" onkeydown="if(event.key==='Enter')showDetail('valid')">
+      <div class="info">
+        <span class="phase-tag">Fase 3</span>
+        <h2>Validación</h2>
+        <p>Casos de prueba positivos y negativos sobre el flujo de canje.</p>
+      </div>
+      <span class="chevron">›</span>
+    </div>
+  </div>
+
+  <!-- ================= DETAIL: PREPARACIÓN ================= -->
+  <div class="detail" id="detail-prep">
+    <button class="back-btn" onclick="showOverview()">← Volver al inicio</button>
+    <div class="detail-head prep">
+      <h2>Fase 1 · Preparación</h2>
+      <p>Precondiciones que deben cumplirse antes de que un invitado pueda ejecutar un canje.</p>
+    </div>
+
+    <div class="sub-section">
+      <h3>Accesos y permisos</h3>
+      <p style="font-size:13.5px;color:var(--text-secondary);margin:0 0 8px;">Este flujo introduce componentes que no existían en los flujos de Configuración→Ejecución ni de Motor de Audiencia. Los accesos de AWS se diferencian por ambiente/cuenta: DEV corre en la cuenta Developer de Virginia, QA en la cuenta Developer de Ohio.</p>
+
+      <div class="env-tag dev">Ambiente DEV · AWS Virginia (cuenta Developer)</div>
+      <ul class="crit-list prep">
+        <li><strong>Redis:</strong> acceso de conexión y lectura, para validar claves y valores de los controles de concurrencia e idempotencia.</li>
+        <li><strong>API Gateway (API de Canje):</strong> asegurar conectividad para poder invocarlo — si es público no hay problema; si es privado, definir con Plataforma cómo nos conectamos.</li>
+      </ul>
+
+      <div class="env-tag qa">Ambiente QA · AWS Ohio (cuenta Developer)</div>
+      <ul class="crit-list prep">
+        <li><strong>Redis:</strong> también necesita acceso de conexión y lectura, para validar claves y valores.</li>
+        <li><strong>API Gateway (API de Canje):</strong> mismo caso que DEV — asegurar la conectividad (público, o definir con Plataforma si es privado).</li>
+      </ul>
+    </div>
+
+    <div class="group-tag">Configuración de la etapa y opciones</div>
+    <div class="sub-section">
+      <ul class="crit-list prep">
+        <li><strong>Etapa activa:</strong> el registro en <span class="mono">[sch_configuracion].[cfg_etapa_segmento]</span> debe tener la etapa asignada en <span class="mono">CANJE</span>, con la fecha actual dentro del rango válido de la promoción y el campo <span class="mono">estado_etapa = 1</span> (Activo).</li>
+        <li><strong>Configuración de la opción:</strong> debe existir el registro correspondiente parametrizado en la tabla <span class="mono">[sch_configuracion].[cfg_opcion]</span>.</li>
+        <li><strong>Proyecciones:</strong>
+          <ul class="crit-list prep sub">
+            <li>Configuración base de la proyección creada en <span class="mono">[sch_proyeccion].[trx_proyeccion]</span>.</li>
+            <li>Proyección de la etapa habilitada en <span class="mono">[sch_proyeccion].[cfg_proyeccion_etapa]</span>.</li>
+            <li>Stock/cantidad de opciones disponibles a contar para el sorteo parametrizadas en <span class="mono">[sch_proyeccion].[trx_opcion_proyectada]</span>.</li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+
+    <div class="group-tag group-divider">Participantes y acumulación de puntaje</div>
+    <div class="sub-section">
+      <ul class="crit-list prep">
+        <li><strong>Audiencia:</strong> el ID del invitado/cliente debe existir en las tablas de audiencia y participantes.</li>
+        <li><strong>Migración de puntos:</strong> los puntos deben haber migrado exitosamente desde los orígenes (<span class="mono">puntos_mixtos</span> y <span class="mono">puntos_mixtos_deporte</span>) hacia la tabla de consolidación <span class="mono">[sch_puntaje].[trx_avance]</span>, asociados al <span class="mono">ID_ejecucion_segmento</span> correspondiente.</li>
+        <li><strong>Opciones:</strong> el invitado debe contar con opciones acumuladas en <span class="mono">[sch_puntaje].[trx_avance]</span> mayor o igual al valor requerido para efectuar al menos un canje.</li>
+      </ul>
+    </div>
+
+    <div class="group-tag group-divider">Escalabilidad</div>
+    <div class="sub-section">
+      <ul class="crit-list prep">
+        <li><strong>Salto de opciones:</strong> el sistema debe estar configurado para monitorizar la sobrecarga de peticiones de canje y permitir la autogeneración del "salto de opciones" (habilitación dinámica de lotes adicionales de opciones) para evitar bloqueos por alta demanda.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ================= DETAIL: EJECUCIÓN ================= -->
+  <div class="detail" id="detail-exec">
+    <button class="back-btn" onclick="showOverview()">← Volver al inicio</button>
+    <div class="detail-head exec">
+      <h2>Fase 2 · Ejecución</h2>
+      <p>El servicio de canje se expone y ejecuta a través de los canales front-end, contemplando las siguientes acciones secuenciales.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num exec">1</div>
+        <div>
+          <h3>Consulta y visualización de opciones</h3>
+          <p class="service exec">Front-end + BD</p>
+          <p>Al ingresar a la plataforma, el sistema consulta en tiempo real la tabla <span class="mono">[sch_puntaje].[trx_avance]</span> y le muestra al usuario sus opciones actuales disponibles.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num exec">2</div>
+        <div>
+          <h3>Puntos de entrada</h3>
+          <p class="service exec">Front-end</p>
+          <p>El usuario inicia el flujo de canje a través de una de dos ventanas: la card del Home de Promociones (botón "Canjear") o el Detalle de la Promoción (vista expandida, botón "Canjear").</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num exec">3</div>
+        <div>
+          <h3>Validación y controles de concurrencia/idempotencia</h3>
+          <p class="service exec">API Promociones Web + Redis + API Gateway</p>
+          <p>Al presionar "Canjear" la petición se dirige al API Promociones Web, que obtiene y valida datos del invitado referentes al reset y luego invoca al API de Canje a través de su API Gateway — toda la ejecución del canje pasa por ahí. Antes de procesar el canje corren dos controles en Redis: concurrencia (con llave fija) e idempotencia (evita replicar el intento si el usuario reintenta el canje).</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num exec">4</div>
+        <div>
+          <h3>Procesamiento en base de datos</h3>
+          <p class="service exec">API Canje + BD</p>
+          <p>El sistema ejecuta obligatoriamente: INSERT en la tabla cabecera <span class="mono">[sch_canje].[trx_canje]</span>, INSERT en la tabla detalle <span class="mono">[sch_canje].[trx_opcion_canjeada]</span>, UPDATE en <span class="mono">[sch_puntaje].[trx_avance]</span> (campos <span class="mono">opciones_canjeadas</span>, <span class="mono">fecha_modificacion</span> y <span class="mono">usuario_modificacion</span>), y UPDATE en <span class="mono">[sch_proyeccion].[trx_opcion_proyectada]</span> (campo <span class="mono">asignado = 1</span>).</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num exec">5</div>
+        <div>
+          <h3>Respuesta y actualización de UI</h3>
+          <p class="service exec">Front-end</p>
+          <p>Se muestra mensaje de éxito y se refrescan las opciones en la pantalla del usuario.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num exec">6</div>
+        <div>
+          <h3>Pruebas técnicas directas al API Gateway</h3>
+          <p class="service exec">API Gateway + JMeter</p>
+          <p>Como toda la ejecución del canje pasa por el API Gateway del API de Canje, las pruebas de concurrencia e idempotencia (Fase 3) se pueden ejecutar directamente contra él con la herramienta JMeter, sin pasar por el API Promociones Web ni el front-end.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= DETAIL: VALIDACIÓN ================= -->
+  <div class="detail" id="detail-valid">
+    <button class="back-btn" onclick="showOverview()">← Volver al inicio</button>
+    <div class="detail-head valid">
+      <h2>Fase 3 · Validación</h2>
+      <p>Casos de prueba positivos y negativos sobre el flujo de canje.</p>
+    </div>
+
+    <div class="sub-section">
+      <h3>Casos de prueba positivos (CP)</h3>
+      <div class="case-card">
+          <div class="case-card-head"><h4>CP-01 · Canje exitoso desde la Card del Home</h4><span class="case-tag happy">Happy path</span></div>
+          <div class="case-field"><div class="label">Acción</div><div>Confirmar el canje desde la card del Home.</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>El sistema muestra un mensaje de éxito. En la BD se confirman los INSERT en <span class="mono">[sch_canje].[trx_canje]</span> y <span class="mono">[sch_canje].[trx_opcion_canjeada]</span>, el UPDATE en <span class="mono">[sch_puntaje].[trx_avance]</span> (campos <span class="mono">opciones_canjeadas</span>, <span class="mono">fecha_modificacion</span> y <span class="mono">usuario_modificacion</span>) y el UPDATE en <span class="mono">[sch_proyeccion].[trx_opcion_proyectada]</span> (campo <span class="mono">asignado</span>).</div></div>
+      </div>
+
+      <div class="case-card">
+          <div class="case-card-head"><h4>CP-02 · Canje exitoso desde el Detalle de Promoción</h4><span class="case-tag happy">Happy path</span></div>
+          <div class="case-field"><div class="label">Acción</div><div>Confirmar el canje desde la vista expandida de la promoción.</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>Mismo comportamiento exitoso y mismas inserciones/actualizaciones en la base de datos que en CP-01.</div></div>
+      </div>
+    </div>
+
+    <div class="sub-section">
+      <h3>Casos de prueba negativos (CN)</h3>
+      <div class="case-card">
+          <div class="case-card-head"><h4>CN-01 · Intento de canje con etapa inactiva</h4><span class="case-tag negativo">Negativo</span></div>
+          <div class="case-field"><div class="label">Precondición</div><div>La etapa de la promoción se encuentra inactiva o expirada en la configuración.</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>El usuario visualiza el botón "Canjear" deshabilitado.</div></div>
+      </div>
+
+      <div class="case-card">
+          <div class="case-card-head"><h4>CN-02 · Intento de canje sin opciones suficientes</h4><span class="case-tag negativo">Negativo</span></div>
+          <div class="case-field"><div class="label">Precondición</div><div>El usuario intenta canjear con un saldo de opciones menor al requerido.</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>El sistema muestra el botón "Canjear" deshabilitado.</div></div>
+      </div>
+
+      <div class="case-card">
+          <div class="case-card-head"><h4>CN-03 · Falla por falta de configuración de opción</h4><span class="case-tag negativo">Negativo</span></div>
+          <div class="case-field"><div class="label">Precondición</div><div>La opción a canjear no se encuentra parametrizada en la base de datos.</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>La transacción es denegada inmediatamente, sin dejar registros en el esquema de canje.</div></div>
+      </div>
+    </div>
+
+    <div class="sub-section">
+      <h3>Pruebas de concurrencia y reintentos</h3>
+      <p style="font-size:13.5px;color:var(--text-secondary);margin:0 0 12px;">Al tener el API de Canje su propio API Gateway, se puede invocar directamente con JMeter para probar los controles de Redis de forma aislada, sin pasar por el front-end.</p>
+      <div class="case-card">
+          <div class="case-card-head"><h4>CP-03 · Concurrencia — doble petición simultánea</h4><span class="case-tag happy">Happy path</span></div>
+          <div class="case-field"><div class="label">Acción</div><div>Con JMeter, enviar dos peticiones de canje simultáneas para el mismo invitado/opción directamente al API Gateway del API de Canje.</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>El control de concurrencia en Redis (llave fija) permite que solo una petición se procese; la segunda es rechazada o queda en espera, sin duplicar el INSERT en <span class="mono">[sch_canje].[trx_canje]</span> ni el UPDATE en <span class="mono">[sch_puntaje].[trx_avance]</span>.</div></div>
+      </div>
+
+      <div class="case-card">
+          <div class="case-card-head"><h4>CP-04 · Reintentos — idempotencia</h4><span class="case-tag happy">Happy path</span></div>
+          <div class="case-field"><div class="label">Acción</div><div>Con JMeter, reenviar varias veces seguidas la misma petición de canje (mismo payload) directamente al API Gateway del API de Canje, simulando un reintento del usuario.</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>El control de idempotencia en Redis detecta el reintento y evita procesarlo de nuevo; no se generan registros duplicados en <span class="mono">[sch_canje].[trx_canje]</span> ni en <span class="mono">[sch_canje].[trx_opcion_canjeada]</span>.</div></div>
+      </div>
+
+      <div class="case-card">
+          <div class="case-card-head"><h4>CN-04 · Concurrencia — segunda petición debe ser rechazada</h4><span class="case-tag negativo">Negativo</span></div>
+          <div class="case-field"><div class="label">Precondición</div><div>Ya existe una petición de canje en curso para el mismo invitado/opción (llave de concurrencia activa en Redis).</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>La segunda petición simultánea es rechazada de forma controlada por el API de Canje (respuesta de error/bloqueo explícita, no un timeout ni una respuesta genérica), sin duplicar el canje ni dejar inconsistencias en BD.</div></div>
+      </div>
+
+      <div class="case-card">
+          <div class="case-card-head"><h4>CN-05 · Idempotencia — reintento no debe reprocesar el canje</h4><span class="case-tag negativo">Negativo</span></div>
+          <div class="case-field"><div class="label">Precondición</div><div>El usuario reintenta la misma petición de canje que ya fue procesada exitosamente.</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>El sistema detecta la idempotencia y no reprocesa la transacción; responde de forma controlada (sin generar un segundo canje ni un error genérico) en lugar de repetir el INSERT/UPDATE en BD.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>Módulo de Canje · Promociones y Fidelización</footer>
+</div>
+
+<script>
+function showDetail(phase){
+  document.getElementById('overview').classList.add('hidden');
+  document.querySelectorAll('.detail').forEach(function(d){ d.classList.remove('active'); });
+  document.getElementById('detail-' + phase).classList.add('active');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+function showOverview(){
+  document.querySelectorAll('.detail').forEach(function(d){ d.classList.remove('active'); });
+  document.getElementById('overview').classList.remove('hidden');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+</script>
+</body>
+</html>
