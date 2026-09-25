@@ -227,15 +227,15 @@
 
       <div class="env-tag dev">Ambiente DEV · AWS Virginia (cuenta Developer)</div>
       <ul class="crit-list prep">
-        <li><strong>Redis:</strong> acceso para los controles de concurrencia (llave fija) e idempotencia — nuevo; DEV sí debería tener este acceso para poder probar el flujo.</li>
-        <li><strong>API Gateway (API de Canje):</strong> nuevo — propio de este flujo, falta solicitarlo.</li>
+        <li><strong>Redis:</strong> acceso de conexión y lectura, para validar claves y valores de los controles de concurrencia e idempotencia.</li>
+        <li><strong>API Gateway (API de Canje):</strong> ya está en proceso de despliegue — no hay que solicitarlo. Lo que sí hay que asegurar es la conectividad para poder invocarlo: si es público no hay problema; si es privado, hay que definir con Plataforma cómo nos conectamos.</li>
         <li><strong>Ya cubierto:</strong> ALB — otorgado en el flujo de Configuración→Ejecución.</li>
       </ul>
 
       <div class="env-tag qa">Ambiente QA · AWS Ohio (cuenta Developer)</div>
       <ul class="crit-list prep">
-        <li><strong>Redis:</strong> <span class="mono">Pendiente de definir</span> si QA necesita acceso de lectura — no está decidido aún.</li>
-        <li><strong>API Gateway (API de Canje):</strong> nuevo — mismo esquema que DEV.</li>
+        <li><strong>Redis:</strong> también necesita acceso de conexión y lectura, para validar claves y valores.</li>
+        <li><strong>API Gateway (API de Canje):</strong> mismo caso que DEV — en proceso de despliegue, falta solo asegurar la conectividad (público, o definir con Plataforma si es privado).</li>
         <li><strong>Ya cubierto:</strong> ALB.</li>
       </ul>
 
@@ -244,7 +244,6 @@
         <li><strong>BD Ejecución (DEV · cuenta BD Virginia):</strong> ya cuenta con permisos (DML) otorgados por el flujo anterior — no hace falta pedirlos por esquema/tabla.</li>
         <li><strong>BD Ejecución (QA · cuenta BD Ohio):</strong> ya cuenta con permisos (DML) otorgados por el flujo anterior.</li>
       </ul>
-      <p class="note">Pendiente confirmar con Arquitectura/Plataforma si QA requiere lectura sobre Redis.</p>
     </div>
 
     <div class="group-tag">Configuración de la etapa y opciones</div>
@@ -387,6 +386,18 @@
           <div class="case-card-head"><h4>CP-04 · Reintentos — idempotencia</h4><span class="case-tag happy">Happy path</span></div>
           <div class="case-field"><div class="label">Acción</div><div>Reenviar varias veces seguidas la misma petición de canje (mismo payload) directamente al API Gateway del API de Canje, simulando un reintento del usuario.</div></div>
           <div class="case-field"><div class="label">Resultado esperado</div><div>El control de idempotencia en Redis detecta el reintento y evita procesarlo de nuevo; no se generan registros duplicados en <span class="mono">[sch_canje].[trx_canje]</span> ni en <span class="mono">[sch_canje].[trx_opcion_canjeada]</span>.</div></div>
+      </div>
+
+      <div class="case-card">
+          <div class="case-card-head"><h4>CN-04 · Concurrencia — segunda petición debe ser rechazada</h4><span class="case-tag negativo">Negativo</span></div>
+          <div class="case-field"><div class="label">Precondición</div><div>Ya existe una petición de canje en curso para el mismo invitado/opción (llave de concurrencia activa en Redis).</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>La segunda petición simultánea es rechazada de forma controlada por el API de Canje (respuesta de error/bloqueo explícita, no un timeout ni una respuesta genérica), sin duplicar el canje ni dejar inconsistencias en BD.</div></div>
+      </div>
+
+      <div class="case-card">
+          <div class="case-card-head"><h4>CN-05 · Idempotencia — reintento no debe reprocesar el canje</h4><span class="case-tag negativo">Negativo</span></div>
+          <div class="case-field"><div class="label">Precondición</div><div>El usuario reintenta la misma petición de canje que ya fue procesada exitosamente.</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>El sistema detecta la idempotencia y no reprocesa la transacción; responde de forma controlada (sin generar un segundo canje ni un error genérico) en lugar de repetir el INSERT/UPDATE en BD.</div></div>
       </div>
     </div>
   </div>
