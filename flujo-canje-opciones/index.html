@@ -166,6 +166,11 @@
   .group-tag.valid{background:var(--turquoise-bg);color:var(--turquoise-text);}
   .group-divider{border-top:1px solid var(--border);margin-top:30px;padding-top:2px;}
 
+  .env-tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.02em;padding:4px 11px;border-radius:6px;margin:16px 0 10px;background:#E7E9E7;color:var(--text-secondary);}
+  .env-tag.qa{background:var(--teal-bg);color:var(--teal-text);}
+  .env-tag.dev{background:#EDE9FE;color:#5B21B6;}
+  .env-tag:first-of-type{margin-top:6px;}
+
   footer{margin-top:48px;font-size:12.5px;color:var(--text-muted);text-align:center;}
 </style>
 </head>
@@ -218,19 +223,34 @@
 
     <div class="sub-section">
       <h3>Accesos y permisos</h3>
-      <p style="font-size:13.5px;color:var(--text-secondary);margin:0 0 8px;">Este flujo introduce componentes que no existían en los flujos de Configuración→Ejecución ni de Motor de Audiencia.</p>
+      <p style="font-size:13.5px;color:var(--text-secondary);margin:0 0 8px;">Este flujo introduce componentes que no existían en los flujos de Configuración→Ejecución ni de Motor de Audiencia. Los accesos de AWS se diferencian por ambiente/cuenta: DEV corre en la cuenta Developer de Virginia, QA en la cuenta Developer de Ohio.</p>
+
+      <div class="env-tag dev">Ambiente DEV · AWS Virginia (cuenta Developer)</div>
       <ul class="crit-list prep">
-        <li><strong>Nuevo:</strong> acceso a Redis — usado para el control de concurrencia (llave fija) y el control de idempotencia (evitar reintentos duplicados de canje).</li>
-        <li><strong>Nuevo:</strong> acceso de BD a los esquemas <span class="mono">sch_canje</span> (tablas <span class="mono">trx_canje</span>, <span class="mono">trx_opcion_canjeada</span>), <span class="mono">sch_proyeccion</span> (<span class="mono">trx_proyeccion</span>, <span class="mono">cfg_proyeccion_etapa</span>, <span class="mono">trx_opcion_proyectada</span>) y <span class="mono">sch_puntaje</span> (<span class="mono">trx_avance</span>) — no contemplados en los accesos anteriores.</li>
-        <li><strong>Ya cubierto (probable):</strong> el ALB que enruta del API Promociones Web al API de Canje — validar que la regla de ruteo incluya este nuevo servicio.</li>
+        <li><strong>Redis:</strong> acceso para los controles de concurrencia (llave fija) e idempotencia — nuevo; DEV sí debería tener este acceso para poder probar el flujo.</li>
+        <li><strong>API Gateway (API de Canje):</strong> nuevo — propio de este flujo, falta solicitarlo.</li>
+        <li><strong>Ya cubierto:</strong> ALB — otorgado en el flujo de Configuración→Ejecución.</li>
       </ul>
-      <p class="note">Pendiente confirmar con Arquitectura si el API Promociones Web y el API de Canje corren sobre la misma infraestructura AWS ya autorizada, o si requieren accesos propios.</p>
+
+      <div class="env-tag qa">Ambiente QA · AWS Ohio (cuenta Developer)</div>
+      <ul class="crit-list prep">
+        <li><strong>Redis:</strong> <span class="mono">Pendiente de definir</span> si QA necesita acceso de lectura — no está decidido aún.</li>
+        <li><strong>API Gateway (API de Canje):</strong> nuevo — mismo esquema que DEV.</li>
+        <li><strong>Ya cubierto:</strong> ALB.</li>
+      </ul>
+
+      <div class="env-tag">Base de datos</div>
+      <ul class="crit-list prep">
+        <li><strong>BD Ejecución (DEV · cuenta BD Virginia):</strong> ya cuenta con permisos (DML) otorgados por el flujo anterior — no hace falta pedirlos por esquema/tabla.</li>
+        <li><strong>BD Ejecución (QA · cuenta BD Ohio):</strong> ya cuenta con permisos (DML) otorgados por el flujo anterior.</li>
+      </ul>
+      <p class="note">Pendiente confirmar con Arquitectura/Plataforma si QA requiere lectura sobre Redis.</p>
     </div>
 
     <div class="group-tag">Configuración de la etapa y opciones</div>
     <div class="sub-section">
       <ul class="crit-list prep">
-        <li><strong>Etapa activa:</strong> el registro en <span class="mono">[sch_configuracion].[cfg_etapa_segmento]</span> debe tener la fecha actual dentro del rango válido de la promoción y el campo <span class="mono">estado_etapa = 1</span> (Activo).</li>
+        <li><strong>Etapa activa:</strong> el registro en <span class="mono">[sch_configuracion].[cfg_etapa_segmento]</span> debe tener la etapa asignada en <span class="mono">CANJE</span>, con la fecha actual dentro del rango válido de la promoción y el campo <span class="mono">estado_etapa = 1</span> (Activo).</li>
         <li><strong>Configuración de la opción:</strong> debe existir el registro correspondiente parametrizado en la tabla <span class="mono">[sch_configuracion].[cfg_opcion]</span>.</li>
         <li><strong>Proyecciones:</strong>
           <ul class="crit-list prep sub">
@@ -351,6 +371,22 @@
           <div class="case-card-head"><h4>CN-03 · Falla por falta de configuración de opción</h4><span class="case-tag negativo">Negativo</span></div>
           <div class="case-field"><div class="label">Precondición</div><div>La opción a canjear no se encuentra parametrizada en la base de datos.</div></div>
           <div class="case-field"><div class="label">Resultado esperado</div><div>La transacción es denegada inmediatamente, sin dejar registros en el esquema de canje.</div></div>
+      </div>
+    </div>
+
+    <div class="sub-section">
+      <h3>Pruebas de concurrencia y reintentos</h3>
+      <p style="font-size:13.5px;color:var(--text-secondary);margin:0 0 12px;">Al tener el API de Canje su propio API Gateway, se puede invocar directamente para probar los controles de Redis de forma aislada, sin pasar por el front-end.</p>
+      <div class="case-card">
+          <div class="case-card-head"><h4>CP-03 · Concurrencia — doble petición simultánea</h4><span class="case-tag happy">Happy path</span></div>
+          <div class="case-field"><div class="label">Acción</div><div>Enviar dos peticiones de canje simultáneas para el mismo invitado/opción directamente al API Gateway del API de Canje.</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>El control de concurrencia en Redis (llave fija) permite que solo una petición se procese; la segunda es rechazada o queda en espera, sin duplicar el INSERT en <span class="mono">[sch_canje].[trx_canje]</span> ni el UPDATE en <span class="mono">[sch_puntaje].[trx_avance]</span>.</div></div>
+      </div>
+
+      <div class="case-card">
+          <div class="case-card-head"><h4>CP-04 · Reintentos — idempotencia</h4><span class="case-tag happy">Happy path</span></div>
+          <div class="case-field"><div class="label">Acción</div><div>Reenviar varias veces seguidas la misma petición de canje (mismo payload) directamente al API Gateway del API de Canje, simulando un reintento del usuario.</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>El control de idempotencia en Redis detecta el reintento y evita procesarlo de nuevo; no se generan registros duplicados en <span class="mono">[sch_canje].[trx_canje]</span> ni en <span class="mono">[sch_canje].[trx_opcion_canjeada]</span>.</div></div>
       </div>
     </div>
   </div>
