@@ -298,8 +298,8 @@
         <div class="step-num exec">3</div>
         <div>
           <h3>Validación y controles de concurrencia/idempotencia</h3>
-          <p class="service exec">API Promociones Web + Redis + ALB</p>
-          <p>Al presionar "Canjear" la petición se dirige al API Promociones Web, que obtiene y valida datos del invitado referentes al reset y luego llama por ALB al API de Canje. Antes de procesar el canje corren dos controles en Redis: concurrencia (con llave fija) e idempotencia (evita replicar el intento si el usuario reintenta el canje).</p>
+          <p class="service exec">API Promociones Web + Redis + API Gateway</p>
+          <p>Al presionar "Canjear" la petición se dirige al API Promociones Web, que obtiene y valida datos del invitado referentes al reset y luego invoca al API de Canje a través de su API Gateway — toda la ejecución del canje pasa por ahí. Antes de procesar el canje corren dos controles en Redis: concurrencia (con llave fija) e idempotencia (evita replicar el intento si el usuario reintenta el canje).</p>
         </div>
       </div>
       <div class="step">
@@ -321,9 +321,9 @@
       <div class="step">
         <div class="step-num exec">6</div>
         <div>
-          <h3>Punto de entrada para pruebas técnicas</h3>
+          <h3>Pruebas técnicas directas al API Gateway</h3>
           <p class="service exec">API Gateway + JMeter</p>
-          <p>Para las pruebas de concurrencia e idempotencia (Fase 3), el punto de entrada es el API Gateway del API de Canje — las pruebas se ejecutan directamente contra él con la herramienta JMeter, sin pasar por el front-end.</p>
+          <p>Como toda la ejecución del canje pasa por el API Gateway del API de Canje, las pruebas de concurrencia e idempotencia (Fase 3) se pueden ejecutar directamente contra él con la herramienta JMeter, sin pasar por el API Promociones Web ni el front-end.</p>
         </div>
       </div>
     </div>
