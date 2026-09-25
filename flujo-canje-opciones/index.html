@@ -228,21 +228,13 @@
       <div class="env-tag dev">Ambiente DEV · AWS Virginia (cuenta Developer)</div>
       <ul class="crit-list prep">
         <li><strong>Redis:</strong> acceso de conexión y lectura, para validar claves y valores de los controles de concurrencia e idempotencia.</li>
-        <li><strong>API Gateway (API de Canje):</strong> ya está en proceso de despliegue — no hay que solicitarlo. Lo que sí hay que asegurar es la conectividad para poder invocarlo: si es público no hay problema; si es privado, hay que definir con Plataforma cómo nos conectamos.</li>
-        <li><strong>Ya cubierto:</strong> ALB — otorgado en el flujo de Configuración→Ejecución.</li>
+        <li><strong>API Gateway (API de Canje):</strong> asegurar conectividad para poder invocarlo — si es público no hay problema; si es privado, definir con Plataforma cómo nos conectamos.</li>
       </ul>
 
       <div class="env-tag qa">Ambiente QA · AWS Ohio (cuenta Developer)</div>
       <ul class="crit-list prep">
         <li><strong>Redis:</strong> también necesita acceso de conexión y lectura, para validar claves y valores.</li>
-        <li><strong>API Gateway (API de Canje):</strong> mismo caso que DEV — en proceso de despliegue, falta solo asegurar la conectividad (público, o definir con Plataforma si es privado).</li>
-        <li><strong>Ya cubierto:</strong> ALB.</li>
-      </ul>
-
-      <div class="env-tag">Base de datos</div>
-      <ul class="crit-list prep">
-        <li><strong>BD Ejecución (DEV · cuenta BD Virginia):</strong> ya cuenta con permisos (DML) otorgados por el flujo anterior — no hace falta pedirlos por esquema/tabla.</li>
-        <li><strong>BD Ejecución (QA · cuenta BD Ohio):</strong> ya cuenta con permisos (DML) otorgados por el flujo anterior.</li>
+        <li><strong>API Gateway (API de Canje):</strong> mismo caso que DEV — asegurar la conectividad (público, o definir con Plataforma si es privado).</li>
       </ul>
     </div>
 
@@ -326,6 +318,14 @@
           <p>Se muestra mensaje de éxito y se refrescan las opciones en la pantalla del usuario.</p>
         </div>
       </div>
+      <div class="step">
+        <div class="step-num exec">6</div>
+        <div>
+          <h3>Punto de entrada para pruebas técnicas</h3>
+          <p class="service exec">API Gateway + JMeter</p>
+          <p>Para las pruebas de concurrencia e idempotencia (Fase 3), el punto de entrada es el API Gateway del API de Canje — las pruebas se ejecutan directamente contra él con la herramienta JMeter, sin pasar por el front-end.</p>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -375,16 +375,16 @@
 
     <div class="sub-section">
       <h3>Pruebas de concurrencia y reintentos</h3>
-      <p style="font-size:13.5px;color:var(--text-secondary);margin:0 0 12px;">Al tener el API de Canje su propio API Gateway, se puede invocar directamente para probar los controles de Redis de forma aislada, sin pasar por el front-end.</p>
+      <p style="font-size:13.5px;color:var(--text-secondary);margin:0 0 12px;">Al tener el API de Canje su propio API Gateway, se puede invocar directamente con JMeter para probar los controles de Redis de forma aislada, sin pasar por el front-end.</p>
       <div class="case-card">
           <div class="case-card-head"><h4>CP-03 · Concurrencia — doble petición simultánea</h4><span class="case-tag happy">Happy path</span></div>
-          <div class="case-field"><div class="label">Acción</div><div>Enviar dos peticiones de canje simultáneas para el mismo invitado/opción directamente al API Gateway del API de Canje.</div></div>
+          <div class="case-field"><div class="label">Acción</div><div>Con JMeter, enviar dos peticiones de canje simultáneas para el mismo invitado/opción directamente al API Gateway del API de Canje.</div></div>
           <div class="case-field"><div class="label">Resultado esperado</div><div>El control de concurrencia en Redis (llave fija) permite que solo una petición se procese; la segunda es rechazada o queda en espera, sin duplicar el INSERT en <span class="mono">[sch_canje].[trx_canje]</span> ni el UPDATE en <span class="mono">[sch_puntaje].[trx_avance]</span>.</div></div>
       </div>
 
       <div class="case-card">
           <div class="case-card-head"><h4>CP-04 · Reintentos — idempotencia</h4><span class="case-tag happy">Happy path</span></div>
-          <div class="case-field"><div class="label">Acción</div><div>Reenviar varias veces seguidas la misma petición de canje (mismo payload) directamente al API Gateway del API de Canje, simulando un reintento del usuario.</div></div>
+          <div class="case-field"><div class="label">Acción</div><div>Con JMeter, reenviar varias veces seguidas la misma petición de canje (mismo payload) directamente al API Gateway del API de Canje, simulando un reintento del usuario.</div></div>
           <div class="case-field"><div class="label">Resultado esperado</div><div>El control de idempotencia en Redis detecta el reintento y evita procesarlo de nuevo; no se generan registros duplicados en <span class="mono">[sch_canje].[trx_canje]</span> ni en <span class="mono">[sch_canje].[trx_opcion_canjeada]</span>.</div></div>
       </div>
 
