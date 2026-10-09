@@ -175,7 +175,6 @@
 
   .mono{overflow-wrap:anywhere;}
   .url{font-family:'IBM Plex Mono', monospace;font-size:12.5px;overflow-wrap:anywhere;word-break:break-word;color:var(--text-primary);}
-  .tbd{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:10px;background:var(--amber-bg);color:var(--amber-text);}
 </style>
 </head>
 <body>
@@ -343,12 +342,6 @@
           <div class="case-card-head"><h4>CN-02 · Parámetros inválidos</h4><span class="case-tag negativo">Negativo</span></div>
           <div class="case-field"><div class="label">Acción</div><div>Enviar <span class="mono">id_online</span> o <span class="mono">numero_documento</span> erróneos o nulos.</div></div>
           <div class="case-field"><div class="label">Resultado esperado</div><div>El servicio responde error 400: la validación exige que la petición incluya el id del jugador online (<span class="mono">id_online</span>).</div></div>
-      </div>
-
-      <div class="case-card">
-          <div class="case-card-head"><h4>CN-03 · Promoción sin contenido</h4><span class="case-tag negativo">Negativo</span></div>
-          <div class="case-field"><div class="label">Precondición</div><div>Activar una promoción en la BD de ejecución sin ruta en la BD de contenido.</div></div>
-          <div class="case-field"><div class="label">Resultado esperado</div><div><span class="tbd">Por definir</span></div></div>
       </div>
     </div>
   </div>
