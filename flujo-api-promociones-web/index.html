@@ -183,7 +183,7 @@
 
   <header>
     <h1>Flujo de API Promociones Web</h1>
-    <p>Guía de referencia para el proveedor. Plan de pruebas de la API Promociones Web: carga y visualización de las promociones activas del invitado en la sección Promociones Web del casino.</p>
+    <p>Guía de referencia para el proveedor. Plan de pruebas de la API Promociones Web: carga y visualización de las promociones activas del invitado en la sección Promociones Web del casino. Esta API actúa como proxy: la API Home es su cliente.</p>
   </header>
 
   <div class="module-tag"><strong>Módulo:</strong> API Promociones Web</div>
@@ -193,7 +193,7 @@
       <div class="info">
         <span class="phase-tag">Etapa 1</span>
         <h2>Preparación</h2>
-        <p>Accesos, front del casino enlazado a las APIs, promociones migradas a BD Ejecución y ruta de contenido configurada.</p>
+        <p>Accesos, front del casino enlazado a las APIs y promociones migradas a BD Ejecución.</p>
       </div>
       <span class="chevron">›</span>
     </div>
@@ -229,18 +229,16 @@
     <div class="group-tag">Definition of Ready (DoR)</div>
     <div class="sub-section">
       <h3>Accesos y permisos</h3>
-      <p style="font-size:13.5px;color:var(--text-secondary);margin:0 0 8px;">Este flujo introduce accesos que no estaban en los flujos anteriores. Se diferencian por ambiente/cuenta: DEV en la cuenta Developer de Virginia, QA en la cuenta Developer de Ohio; la BD en la cuenta BD de cada región.</p>
+      <p style="font-size:13.5px;color:var(--text-secondary);margin:0 0 8px;">Este flujo introduce accesos que no estaban en los flujos anteriores. Se diferencian por ambiente/cuenta: DEV en la cuenta Developer de Virginia, QA en la cuenta Developer de Ohio.</p>
 
       <div class="env-tag dev">Ambiente DEV · Virginia (cuenta Developer)</div>
       <ul class="crit-list prep">
         <li><strong>API-key:</strong> las api-key de las APIs de Home y Web de este ambiente, para el front de pruebas del casino.</li>
-        <li><strong>BD de contenido (cuenta BD Virginia):</strong> acceso a <span class="mono">bd_promocion_contenido</span> para validar la ruta y el contenido de las promociones.</li>
       </ul>
 
       <div class="env-tag qa">Ambiente QA · Ohio (cuenta Developer)</div>
       <ul class="crit-list prep">
         <li><strong>API-key:</strong> las api-key de las APIs de Home y Web de este ambiente, para el front de pruebas del casino.</li>
-        <li><strong>BD de contenido (cuenta BD Ohio):</strong> acceso a <span class="mono">bd_promocion_contenido</span> para validar la ruta y el contenido de las promociones.</li>
       </ul>
     </div>
 
@@ -255,7 +253,6 @@
     <div class="sub-section">
       <ul class="crit-list prep">
         <li><strong>Configuración migrada:</strong> contar con la configuración de las promociones migrada a la <span class="mono">BD_PROMOCION_EJECUCION</span>.</li>
-        <li><strong>Ruta de promociones web:</strong> contar con la ruta de promociones web en la base de datos <span class="mono">bd_promocion_contenido</span>, en la tabla <span class="mono">[sch_contenido].[trx_contenido_promocion]</span>.</li>
       </ul>
     </div>
   </div>
@@ -281,7 +278,7 @@
         <div>
           <h3>Carrusel de promociones del invitado</h3>
           <p class="service exec">API Promociones Web</p>
-          <p>Disparo del servicio:<br><span class="url">https://ext_api.acity.com.pe/api-con-promocion_home/api/PromocionesInvitado/promocionesInvitadoCarrusel/549672/COL</span></p>
+          <p>Disparo del servicio:<br><span class="url">https://api-promociones-web-qa.casinoatlanticcity.com/home/api/PromocionesInvitado/promocionesInvitadoCarrusel/549672/COL</span></p>
         </div>
       </div>
       <div class="step">
@@ -324,12 +321,12 @@
       <div class="case-card">
           <div class="case-card-head"><h4>CP-01 · Carga exitosa de promociones</h4><span class="case-tag happy">Happy path</span></div>
           <div class="case-field"><div class="label">Acción</div><div>Ingresar con un usuario con promociones asignadas.</div></div>
-          <div class="case-field"><div class="label">Resultado esperado</div><div>El servicio devuelve HTTP 200 y el frontend renderiza el contenido leyendo la ruta de <span class="mono">[bd_promocion_contenido]</span> en el orden correcto.</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>El servicio devuelve HTTP 200 y el frontend renderiza el contenido de las promociones en el orden correcto.</div></div>
       </div>
 
       <div class="case-card">
           <div class="case-card-head"><h4>CP-02 · Carga de contenido multimedia</h4><span class="case-tag happy">Happy path</span></div>
-          <div class="case-field"><div class="label">Acción</div><div>Revisar las imágenes y textos obtenidos de <span class="mono">[sch_contenido].[trx_contenido_promocion]</span>.</div></div>
+          <div class="case-field"><div class="label">Acción</div><div>Revisar las imágenes y textos devueltos por el servicio.</div></div>
           <div class="case-field"><div class="label">Resultado esperado</div><div>Las imágenes y textos cargan correctamente, sin errores de formato.</div></div>
       </div>
     </div>
@@ -345,7 +342,7 @@
       <div class="case-card">
           <div class="case-card-head"><h4>CN-02 · Parámetros inválidos</h4><span class="case-tag negativo">Negativo</span></div>
           <div class="case-field"><div class="label">Acción</div><div>Enviar <span class="mono">id_online</span> o <span class="mono">numero_documento</span> erróneos o nulos.</div></div>
-          <div class="case-field"><div class="label">Resultado esperado</div><div><span class="tbd">Por definir</span></div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>El servicio responde error 400: la validación exige que la petición incluya el id del jugador online (<span class="mono">id_online</span>).</div></div>
       </div>
 
       <div class="case-card">
