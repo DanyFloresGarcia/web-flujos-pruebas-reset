@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Flujo de Promociones Web (API Home)</title>
+<title>Flujo de API Promociones Web</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
 <style>
@@ -182,18 +182,18 @@
 <div class="wrap">
 
   <header>
-    <h1>Flujo de Promociones Web (API Home)</h1>
-    <p>Guía de referencia para el proveedor. Plan de pruebas de la sección Promociones Web del casino: carga y visualización de las promociones activas del invitado a través de las APIs de Home.</p>
+    <h1>Flujo de API Promociones Web</h1>
+    <p>Guía de referencia para el proveedor. Plan de pruebas de la API Promociones Web: carga y visualización de las promociones activas del invitado en la sección Promociones Web del casino.</p>
   </header>
 
-  <div class="module-tag"><strong>Módulo:</strong> Promociones Web · API Home</div>
+  <div class="module-tag"><strong>Módulo:</strong> API Promociones Web</div>
 
   <div id="overview">
     <div class="phase-card prep" tabindex="0" role="button" onclick="showDetail('prep')" onkeydown="if(event.key==='Enter')showDetail('prep')">
       <div class="info">
         <span class="phase-tag">Etapa 1</span>
         <h2>Preparación</h2>
-        <p>Front del casino enlazado a las APIs de Home y Web, promociones migradas a BD Ejecución y ruta de contenido configurada.</p>
+        <p>Accesos, front del casino enlazado a las APIs, promociones migradas a BD Ejecución y ruta de contenido configurada.</p>
       </div>
       <span class="chevron">›</span>
     </div>
@@ -202,7 +202,7 @@
       <div class="info">
         <span class="phase-tag">Etapa 2</span>
         <h2>Ejecución</h2>
-        <p>Ingreso a la sección Promociones Web y disparo de los servicios de Home (carrusel, etiquetas y orden de promociones).</p>
+        <p>Ingreso a la sección Promociones Web y disparo de los servicios de la API Promociones Web (carrusel, etiquetas y orden de promociones).</p>
       </div>
       <span class="chevron">›</span>
     </div>
@@ -226,20 +226,34 @@
       <p>Condiciones que deben cumplirse antes de ingresar a la sección Promociones Web.</p>
     </div>
 
+    <div class="group-tag">Definition of Ready (DoR)</div>
     <div class="sub-section">
       <h3>Accesos y permisos</h3>
-      <p style="font-size:13.5px;color:var(--text-secondary);margin:0 0 8px;">Accesos adicionales requeridos para este flujo.</p>
+      <p style="font-size:13.5px;color:var(--text-secondary);margin:0 0 8px;">Este flujo introduce accesos que no estaban en los flujos anteriores. Se diferencian por ambiente/cuenta: DEV en la cuenta Developer de Virginia, QA en la cuenta Developer de Ohio; la BD en la cuenta BD de cada región.</p>
+
+      <div class="env-tag dev">Ambiente DEV · Virginia (cuenta Developer)</div>
       <ul class="crit-list prep">
-        <li><strong>API-key:</strong> contar con las api-key de las APIs de Home y Web para el ambiente de pruebas del front del casino.</li>
-        <li><strong>BD de contenido:</strong> acceso a <span class="mono">bd_promocion_contenido</span> para validar la ruta y el contenido de las promociones.</li>
+        <li><strong>API-key:</strong> las api-key de las APIs de Home y Web de este ambiente, para el front de pruebas del casino.</li>
+        <li><strong>BD de contenido (cuenta BD Virginia):</strong> acceso a <span class="mono">bd_promocion_contenido</span> para validar la ruta y el contenido de las promociones.</li>
       </ul>
-      <p class="note">Pendiente confirmar el detalle por ambiente (DEV · Virginia / QA · Ohio) y por cuenta (Developer / BD).</p>
+
+      <div class="env-tag qa">Ambiente QA · Ohio (cuenta Developer)</div>
+      <ul class="crit-list prep">
+        <li><strong>API-key:</strong> las api-key de las APIs de Home y Web de este ambiente, para el front de pruebas del casino.</li>
+        <li><strong>BD de contenido (cuenta BD Ohio):</strong> acceso a <span class="mono">bd_promocion_contenido</span> para validar la ruta y el contenido de las promociones.</li>
+      </ul>
     </div>
 
-    <div class="group-tag">Checklist de preparación</div>
+    <div class="sub-section">
+      <h3>Pre requisitos técnicos</h3>
+      <ul class="crit-list prep">
+        <li>Ambiente de pruebas del front del casino enlazado a las APIs de Home y Web.</li>
+      </ul>
+    </div>
+
+    <div class="group-tag group-divider">Configuración de datos de prueba</div>
     <div class="sub-section">
       <ul class="crit-list prep">
-        <li><strong>Ambiente de pruebas:</strong> contar con el ambiente de pruebas del front del casino enlazado a las APIs de Home y Web, con sus respectivas api-key.</li>
         <li><strong>Configuración migrada:</strong> contar con la configuración de las promociones migrada a la <span class="mono">BD_PROMOCION_EJECUCION</span>.</li>
         <li><strong>Ruta de promociones web:</strong> contar con la ruta de promociones web en la base de datos <span class="mono">bd_promocion_contenido</span>, en la tabla <span class="mono">[sch_contenido].[trx_contenido_promocion]</span>.</li>
       </ul>
@@ -251,7 +265,7 @@
     <button class="back-btn" onclick="showOverview()">← Volver al inicio</button>
     <div class="detail-head exec">
       <h2>Etapa 2 · Ejecución</h2>
-      <p>Ingreso a la sección Promociones Web y disparo de los servicios de Home.</p>
+      <p>Ingreso a la sección Promociones Web y disparo de los servicios de la API Promociones Web.</p>
     </div>
     <div class="steps">
       <div class="step">
@@ -266,7 +280,7 @@
         <div class="step-num exec">2</div>
         <div>
           <h3>Carrusel de promociones del invitado</h3>
-          <p class="service exec">API Home</p>
+          <p class="service exec">API Promociones Web</p>
           <p>Disparo del servicio:<br><span class="url">https://ext_api.acity.com.pe/api-con-promocion_home/api/PromocionesInvitado/promocionesInvitadoCarrusel/549672/COL</span></p>
         </div>
       </div>
@@ -274,7 +288,7 @@
         <div class="step-num exec">3</div>
         <div>
           <h3>Listado de etiquetas</h3>
-          <p class="service exec">API Home</p>
+          <p class="service exec">API Promociones Web</p>
           <p>Disparo del servicio:<br><span class="url">https://api-promociones-home.casinoatlanticcity.com/home/api/HomePromociones/ListarEtiquetas</span></p>
         </div>
       </div>
@@ -282,7 +296,7 @@
         <div class="step-num exec">4</div>
         <div>
           <h3>Orden de promociones</h3>
-          <p class="service exec">API Home</p>
+          <p class="service exec">API Promociones Web</p>
           <p>Disparo del servicio:<br><span class="url">https://api-promociones-home.casinoatlanticcity.com/home/api/HomePromociones/HomeOrdenPromociones/'id_online'?numero_documento='numero_documento'</span></p>
         </div>
       </div>
@@ -342,7 +356,7 @@
     </div>
   </div>
 
-  <footer>Promociones Web · API Home</footer>
+  <footer>API Promociones Web</footer>
 </div>
 
 <script>

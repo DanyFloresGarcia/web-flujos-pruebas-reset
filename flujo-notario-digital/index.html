@@ -226,22 +226,38 @@
       <p>Para poder iniciar las pruebas, el entorno y los datos deben cumplir estrictamente con las siguientes condiciones.</p>
     </div>
 
+    <div class="group-tag">Definition of Ready (DoR)</div>
     <div class="sub-section">
       <h3>Accesos y permisos</h3>
-      <p style="font-size:13.5px;color:var(--text-secondary);margin:0 0 8px;">Accesos adicionales requeridos para este flujo.</p>
+      <p style="font-size:13.5px;color:var(--text-secondary);margin:0 0 8px;">Este flujo introduce accesos que no estaban en los flujos anteriores. Se diferencian por ambiente/cuenta: DEV en la cuenta Developer de Virginia, QA en la cuenta Developer de Ohio; la BD en la cuenta BD de cada región.</p>
+
+      <div class="env-tag dev">Ambiente DEV · Virginia (cuenta Developer)</div>
       <ul class="crit-list prep">
-        <li><strong>BD de resultados:</strong> acceso a <span class="mono">bd_promocion_resultado</span> para validar los ganadores guardados por el proceso.</li>
-        <li><strong>Componentes cloud del notario digital:</strong> permisos para desplegarlos y validarlos — por confirmar con Plataforma el detalle de servicios.</li>
+        <li><strong>Front del notario digital:</strong> acceso operativo con un usuario que tenga los permisos necesarios para ejecutar sorteos.</li>
+        <li><strong>Componentes cloud del notario digital:</strong> permisos para desplegarlos y validarlos, con la estructura de desacoplamiento.</li>
+        <li><strong>BD de resultados (cuenta BD Virginia):</strong> acceso a <span class="mono">bd_promocion_resultado</span> para validar los ganadores guardados por el proceso.</li>
       </ul>
-      <p class="note">Pendiente confirmar el detalle por ambiente (DEV · Virginia / QA · Ohio) y por cuenta (Developer / BD).</p>
+
+      <div class="env-tag qa">Ambiente QA · Ohio (cuenta Developer)</div>
+      <ul class="crit-list prep">
+        <li><strong>Front del notario digital:</strong> acceso operativo con un usuario que tenga los permisos necesarios para ejecutar sorteos.</li>
+        <li><strong>Componentes cloud del notario digital:</strong> permisos para desplegarlos y validarlos, con la estructura de desacoplamiento.</li>
+        <li><strong>BD de resultados (cuenta BD Ohio):</strong> acceso a <span class="mono">bd_promocion_resultado</span> para validar los ganadores guardados por el proceso.</li>
+      </ul>
+      <p class="note">Pendiente confirmar con Plataforma el detalle de los servicios cloud del notario digital para precisar sus permisos.</p>
     </div>
 
-    <div class="group-tag">Checklist de preparación</div>
+    <div class="group-tag group-divider">Reglas de negocio</div>
     <div class="sub-section">
       <ul class="crit-list prep">
-        <li><strong>Acceso a la plataforma:</strong> contar con acceso operativo al front del notario digital, con los permisos necesarios para ejecutar sorteos.</li>
-        <li><strong>Configuración de la mecánica:</strong> la base de datos de ejecución debe contar con la configuración previa para el tipo de evento a realizar (Sorteo, Lotería o Lotería Final).</li>
         <li><strong>Vigencia de la etapa:</strong> la etapa del sorteo a ejecutar debe encontrarse dentro de la fecha vigente y su estado en el sistema debe ser activo (<span class="mono">estado_etapa = 1</span>).</li>
+      </ul>
+    </div>
+
+    <div class="group-tag group-divider">Configuración de datos de prueba</div>
+    <div class="sub-section">
+      <ul class="crit-list prep">
+        <li><strong>Configuración de la mecánica:</strong> la base de datos de ejecución debe contar con la configuración previa para el tipo de evento a realizar (Sorteo, Lotería o Lotería Final).</li>
         <li><strong>Integridad de tablas base:</strong> deben estar correctamente parametrizadas y con datos consistentes las siguientes tablas:
           <ul class="crit-list prep sub">
             <li><span class="mono">[sch_configuracion].[cfg_opcion]</span></li>
