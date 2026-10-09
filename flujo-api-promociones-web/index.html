@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flujo de API Promociones Web</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F6F7F5;
+    --surface:#FFFFFF;
+    --border:#E1E4E0;
+    --text-primary:#1B1F1C;
+    --text-secondary:#5C625E;
+    --text-muted:#8A8F8B;
+
+    --teal-bg:#E1F5EE; --teal-text:#085041; --teal-border:#5DCAA5;
+    --coral-bg:#FAECE7; --coral-text:#712B13; --coral-border:#F0997B;
+    --amber-bg:#FAEEDA; --amber-text:#633806; --amber-border:#EF9F27;
+    --turquoise-bg:#E0F7FA; --turquoise-text:#0B5B66; --turquoise-border:#26C6DA;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text-primary);
+    font-family:'Inter', sans-serif;
+    line-height:1.6;
+    padding:40px 20px 80px;
+  }
+  .wrap{max-width:880px;margin:0 auto;}
+  h1,h2,h3{font-family:'Space Grotesk', sans-serif;font-weight:600;margin:0;}
+  .mono{font-family:'IBM Plex Mono', monospace;}
+
+  header{margin-bottom:20px;}
+  header h1{font-size:26px;color:var(--text-primary);}
+  header p{margin:8px 0 0;color:var(--text-secondary);font-size:15px;max-width:62ch;}
+
+  .module-tag{display:inline-flex;align-items:center;gap:12px;font-size:13px;color:var(--text-secondary);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 16px;margin-bottom:36px;}
+  .module-tag strong{color:var(--text-primary);}
+
+  /* ---- overview cards ---- */
+  #overview{display:flex;flex-direction:column;gap:14px;}
+  .phase-card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-left:5px solid var(--card-accent, #999);
+    border-radius:10px;
+    padding:20px 22px;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  .phase-card:hover{box-shadow:0 2px 10px rgba(0,0,0,0.06);}
+  .phase-card:focus-visible{outline:2px solid var(--card-accent,#999);outline-offset:2px;}
+  .phase-card .info h2{font-size:17px;}
+  .phase-card .info p{margin:6px 0 0;font-size:14px;color:var(--text-secondary);}
+  .phase-tag{
+    font-size:11px;
+    letter-spacing:.02em;
+    color:var(--card-accent-text,#555);
+    background:var(--card-accent-bg,#eee);
+    padding:3px 9px;
+    border-radius:20px;
+    display:inline-block;
+    margin-bottom:8px;
+  }
+  .chevron{font-size:20px;color:var(--text-muted);flex-shrink:0;}
+  .phase-card.pending{border-left-style:dashed;}
+
+  .prep{--card-accent:var(--teal-border); --card-accent-bg:var(--teal-bg); --card-accent-text:var(--teal-text);}
+  .exec{--card-accent:var(--coral-border); --card-accent-bg:var(--coral-bg); --card-accent-text:var(--coral-text);}
+  .valid{--card-accent:var(--turquoise-border); --card-accent-bg:var(--turquoise-bg); --card-accent-text:var(--turquoise-text);}
+
+  /* ---- detail views ---- */
+  .detail{display:none;}
+  .detail.active{display:block;}
+  #overview.hidden{display:none;}
+
+  .back-btn{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    color:var(--text-primary);
+    font-family:'Inter',sans-serif;
+    font-size:14px;
+    font-weight:500;
+    padding:9px 16px;
+    border-radius:8px;
+    cursor:pointer;
+    margin-bottom:24px;
+  }
+  .back-btn:hover{background:#F0F1EF;}
+
+  .detail-head{
+    border-radius:10px;
+    padding:18px 22px;
+    margin-bottom:24px;
+    border:1px solid var(--border);
+  }
+  .detail-head h2{font-size:19px;}
+  .detail-head p{margin:6px 0 0;font-size:14px;color:var(--text-secondary);}
+
+  .detail-head.prep{background:var(--teal-bg);border-color:var(--teal-border);}
+  .detail-head.prep h2{color:var(--teal-text);}
+  .detail-head.exec{background:var(--coral-bg);border-color:var(--coral-border);}
+  .detail-head.exec h2{color:var(--coral-text);}
+  .detail-head.valid{background:var(--turquoise-bg);border-color:var(--turquoise-border);}
+  .detail-head.valid h2{color:var(--turquoise-text);}
+
+  .steps{display:flex;flex-direction:column;gap:0;}
+  .step{
+    display:flex;
+    gap:16px;
+    padding:16px 0;
+    border-bottom:1px solid var(--border);
+  }
+  .step:last-child{border-bottom:none;}
+  .step-num{
+    width:30px;height:30px;flex-shrink:0;
+    border-radius:50%;
+    background:var(--coral-bg);
+    color:var(--coral-text);
+    display:flex;align-items:center;justify-content:center;
+    font-size:13px;font-weight:600;font-family:'Space Grotesk',sans-serif;
+  }
+  .step h3{font-size:15px;margin-bottom:4px;}
+  .step p{margin:0;font-size:14px;color:var(--text-secondary);}
+  .step .service{font-size:12px;color:var(--coral-text);}
+
+  /* ---- sub-sections ---- */
+  .sub-section{margin-bottom:26px;}
+  .sub-section h3{font-size:14px;color:var(--text-secondary);margin-bottom:12px;}
+  .crit-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px;}
+  .crit-list li{position:relative;padding-left:18px;font-size:14px;color:var(--text-primary);}
+  .crit-list li::before{content:"";position:absolute;left:0;top:7px;width:6px;height:6px;border-radius:50%;background:var(--dot-color,#999);}
+  .crit-list.prep li::before{--dot-color:var(--teal-border);}
+  .crit-list.sub{margin:8px 0 0 4px;gap:6px;}
+  .crit-list.sub li{font-size:13.5px;}
+  .crit-list.sub li::before{width:5px;height:5px;top:7px;}
+  .steps-title{font-size:14px;color:var(--text-secondary);margin-bottom:12px;}
+
+  /* ---- casos de validación ---- */
+  .case-tag{display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap;}
+  .case-tag.happy{background:var(--teal-bg);color:var(--teal-text);}
+  .case-tag.negativo{background:var(--coral-bg);color:var(--coral-text);}
+
+  .case-card{border:1px solid var(--border);border-radius:10px;padding:18px 20px;margin-bottom:14px;background:var(--surface);}
+  .case-card-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
+  .case-card-head h4{font-size:15px;font-family:'Space Grotesk',sans-serif;font-weight:600;color:var(--text-primary);}
+  .case-field{display:grid;grid-template-columns:130px 1fr;gap:8px;font-size:13.5px;padding:8px 0;border-top:1px solid var(--border);}
+  .case-field:first-of-type{border-top:none;}
+  .case-field .label{color:var(--text-secondary);font-weight:600;}
+
+  .note{font-size:13px;color:var(--text-muted);margin-top:14px;}
+  .note a{color:var(--text-secondary);}
+
+  .group-tag{display:inline-block;background:var(--teal-bg);color:var(--teal-text);font-size:11.5px;font-weight:700;letter-spacing:.02em;padding:5px 12px;border-radius:20px;margin:8px 0 16px;}
+  .group-tag.exec{background:var(--coral-bg);color:var(--coral-text);}
+  .group-tag.valid{background:var(--turquoise-bg);color:var(--turquoise-text);}
+  .group-divider{border-top:1px solid var(--border);margin-top:30px;padding-top:2px;}
+
+  .env-tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.02em;padding:4px 11px;border-radius:6px;margin:16px 0 10px;background:#E7E9E7;color:var(--text-secondary);}
+  .env-tag.qa{background:var(--teal-bg);color:var(--teal-text);}
+  .env-tag.dev{background:#EDE9FE;color:#5B21B6;}
+  .env-tag:first-of-type{margin-top:6px;}
+
+  footer{margin-top:48px;font-size:12.5px;color:var(--text-muted);text-align:center;}
+
+  .mono{overflow-wrap:anywhere;}
+  .url{font-family:'IBM Plex Mono', monospace;font-size:12.5px;overflow-wrap:anywhere;word-break:break-word;color:var(--text-primary);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Flujo de API Promociones Web</h1>
+    <p>Guía de referencia para el proveedor. Plan de pruebas de la API Promociones Web: carga y visualización de las promociones activas del invitado en la sección Promociones Web del casino. Esta API actúa como proxy: la API Home es su cliente.</p>
+  </header>
+
+  <div class="module-tag"><strong>Módulo:</strong> API Promociones Web</div>
+
+  <div id="overview">
+    <div class="phase-card prep" tabindex="0" role="button" onclick="showDetail('prep')" onkeydown="if(event.key==='Enter')showDetail('prep')">
+      <div class="info">
+        <span class="phase-tag">Etapa 1</span>
+        <h2>Preparación</h2>
+        <p>Accesos, front del casino enlazado a las APIs y promociones migradas a BD Ejecución.</p>
+      </div>
+      <span class="chevron">›</span>
+    </div>
+
+    <div class="phase-card exec" tabindex="0" role="button" onclick="showDetail('exec')" onkeydown="if(event.key==='Enter')showDetail('exec')">
+      <div class="info">
+        <span class="phase-tag">Etapa 2</span>
+        <h2>Ejecución</h2>
+        <p>Ingreso a la sección Promociones Web y disparo de los servicios de la API Promociones Web (carrusel, etiquetas y orden de promociones).</p>
+      </div>
+      <span class="chevron">›</span>
+    </div>
+
+    <div class="phase-card valid" tabindex="0" role="button" onclick="showDetail('valid')" onkeydown="if(event.key==='Enter')showDetail('valid')">
+      <div class="info">
+        <span class="phase-tag">Etapa 3</span>
+        <h2>Validación</h2>
+        <p>Casos de prueba positivos y negativos sobre la carga de promociones y su contenido.</p>
+      </div>
+      <span class="chevron">›</span>
+    </div>
+
+  </div>
+
+  <!-- ================= DETAIL: PREPARACIÓN ================= -->
+  <div class="detail" id="detail-prep">
+    <button class="back-btn" onclick="showOverview()">← Volver al inicio</button>
+    <div class="detail-head prep">
+      <h2>Etapa 1 · Preparación</h2>
+      <p>Condiciones que deben cumplirse antes de ingresar a la sección Promociones Web.</p>
+    </div>
+
+    <div class="group-tag">Definition of Ready (DoR)</div>
+    <div class="sub-section">
+      <h3>Accesos y permisos</h3>
+      <p style="font-size:13.5px;color:var(--text-secondary);margin:0 0 8px;">Este flujo introduce accesos que no estaban en los flujos anteriores. Se diferencian por ambiente/cuenta: DEV en la cuenta Developer de Virginia, QA en la cuenta Developer de Ohio.</p>
+
+      <div class="env-tag dev">Ambiente DEV · Virginia (cuenta Developer)</div>
+      <ul class="crit-list prep">
+        <li><strong>API-key:</strong> las api-key de las APIs de Home y Web de este ambiente, para el front de pruebas del casino.</li>
+      </ul>
+
+      <div class="env-tag qa">Ambiente QA · Ohio (cuenta Developer)</div>
+      <ul class="crit-list prep">
+        <li><strong>API-key:</strong> las api-key de las APIs de Home y Web de este ambiente, para el front de pruebas del casino.</li>
+      </ul>
+    </div>
+
+    <div class="sub-section">
+      <h3>Pre requisitos técnicos</h3>
+      <ul class="crit-list prep">
+        <li>Ambiente de pruebas del front del casino enlazado a las APIs de Home y Web.</li>
+      </ul>
+    </div>
+
+    <div class="group-tag group-divider">Configuración de datos de prueba</div>
+    <div class="sub-section">
+      <ul class="crit-list prep">
+        <li><strong>Configuración migrada:</strong> contar con la configuración de las promociones migrada a la <span class="mono">BD_PROMOCION_EJECUCION</span>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ================= DETAIL: EJECUCIÓN ================= -->
+  <div class="detail" id="detail-exec">
+    <button class="back-btn" onclick="showOverview()">← Volver al inicio</button>
+    <div class="detail-head exec">
+      <h2>Etapa 2 · Ejecución</h2>
+      <p>Ingreso a la sección Promociones Web y disparo de los servicios de la API Promociones Web.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num exec">1</div>
+        <div>
+          <h3>Ingreso a la sección Promociones Web</h3>
+          <p class="service exec">Front del casino</p>
+          <p>Ingresar a la web del casino en la sección Promociones Web.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num exec">2</div>
+        <div>
+          <h3>Carrusel de promociones del invitado</h3>
+          <p class="service exec">API Promociones Web</p>
+          <p>Disparo del servicio:<br><span class="url">https://api-promociones-web-qa.casinoatlanticcity.com/home/api/PromocionesInvitado/promocionesInvitadoCarrusel/549672/COL</span></p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num exec">3</div>
+        <div>
+          <h3>Listado de etiquetas</h3>
+          <p class="service exec">API Promociones Web</p>
+          <p>Disparo del servicio:<br><span class="url">https://api-promociones-home.casinoatlanticcity.com/home/api/HomePromociones/ListarEtiquetas</span></p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num exec">4</div>
+        <div>
+          <h3>Orden de promociones</h3>
+          <p class="service exec">API Promociones Web</p>
+          <p>Disparo del servicio:<br><span class="url">https://api-promociones-home.casinoatlanticcity.com/home/api/HomePromociones/HomeOrdenPromociones/'id_online'?numero_documento='numero_documento'</span></p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num exec">5</div>
+        <div>
+          <h3>Visualización de promociones</h3>
+          <p class="service exec">Front del casino</p>
+          <p>Visualización de las promociones activas / participar por el invitado.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= DETAIL: VALIDACIÓN ================= -->
+  <div class="detail" id="detail-valid">
+    <button class="back-btn" onclick="showOverview()">← Volver al inicio</button>
+    <div class="detail-head valid">
+      <h2>Etapa 3 · Validación</h2>
+      <p>Casos de prueba positivos y negativos sobre la carga de promociones.</p>
+    </div>
+
+    <div class="sub-section">
+      <h3>Casos positivos</h3>
+      <div class="case-card">
+          <div class="case-card-head"><h4>CP-01 · Carga exitosa de promociones</h4><span class="case-tag happy">Happy path</span></div>
+          <div class="case-field"><div class="label">Acción</div><div>Ingresar con un usuario con promociones asignadas.</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>El servicio devuelve HTTP 200 y el frontend renderiza el contenido de las promociones en el orden correcto.</div></div>
+      </div>
+
+      <div class="case-card">
+          <div class="case-card-head"><h4>CP-02 · Carga de contenido multimedia</h4><span class="case-tag happy">Happy path</span></div>
+          <div class="case-field"><div class="label">Acción</div><div>Revisar las imágenes y textos devueltos por el servicio.</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>Las imágenes y textos cargan correctamente, sin errores de formato.</div></div>
+      </div>
+    </div>
+
+    <div class="sub-section">
+      <h3>Casos negativos</h3>
+      <div class="case-card">
+          <div class="case-card-head"><h4>CN-01 · Usuario sin promociones</h4><span class="case-tag negativo">Negativo</span></div>
+          <div class="case-field"><div class="label">Acción</div><div>Ingresar con un usuario que no califica.</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>El servicio devuelve una lista vacía y la interfaz muestra un mensaje de estado vacío.</div></div>
+      </div>
+
+      <div class="case-card">
+          <div class="case-card-head"><h4>CN-02 · Parámetros inválidos</h4><span class="case-tag negativo">Negativo</span></div>
+          <div class="case-field"><div class="label">Acción</div><div>Enviar <span class="mono">id_online</span> o <span class="mono">numero_documento</span> erróneos o nulos.</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>El servicio responde error 400: la validación exige que la petición incluya el id del jugador online (<span class="mono">id_online</span>).</div></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>API Promociones Web</footer>
+</div>
+
+<script>
+function showDetail(phase){
+  document.getElementById('overview').classList.add('hidden');
+  document.querySelectorAll('.detail').forEach(function(d){ d.classList.remove('active'); });
+  document.getElementById('detail-' + phase).classList.add('active');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+function showOverview(){
+  document.querySelectorAll('.detail').forEach(function(d){ d.classList.remove('active'); });
+  document.getElementById('overview').classList.remove('hidden');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+</script>
+</body>
+</html>

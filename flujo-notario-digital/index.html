@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Notario Digital — Sorteos y Loterías</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F6F7F5;
+    --surface:#FFFFFF;
+    --border:#E1E4E0;
+    --text-primary:#1B1F1C;
+    --text-secondary:#5C625E;
+    --text-muted:#8A8F8B;
+
+    --teal-bg:#E1F5EE; --teal-text:#085041; --teal-border:#5DCAA5;
+    --coral-bg:#FAECE7; --coral-text:#712B13; --coral-border:#F0997B;
+    --amber-bg:#FAEEDA; --amber-text:#633806; --amber-border:#EF9F27;
+    --turquoise-bg:#E0F7FA; --turquoise-text:#0B5B66; --turquoise-border:#26C6DA;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text-primary);
+    font-family:'Inter', sans-serif;
+    line-height:1.6;
+    padding:40px 20px 80px;
+  }
+  .wrap{max-width:880px;margin:0 auto;}
+  h1,h2,h3{font-family:'Space Grotesk', sans-serif;font-weight:600;margin:0;}
+  .mono{font-family:'IBM Plex Mono', monospace;}
+
+  header{margin-bottom:20px;}
+  header h1{font-size:26px;color:var(--text-primary);}
+  header p{margin:8px 0 0;color:var(--text-secondary);font-size:15px;max-width:62ch;}
+
+  .module-tag{display:inline-flex;align-items:center;gap:12px;font-size:13px;color:var(--text-secondary);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 16px;margin-bottom:36px;}
+  .module-tag strong{color:var(--text-primary);}
+
+  /* ---- overview cards ---- */
+  #overview{display:flex;flex-direction:column;gap:14px;}
+  .phase-card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-left:5px solid var(--card-accent, #999);
+    border-radius:10px;
+    padding:20px 22px;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  .phase-card:hover{box-shadow:0 2px 10px rgba(0,0,0,0.06);}
+  .phase-card:focus-visible{outline:2px solid var(--card-accent,#999);outline-offset:2px;}
+  .phase-card .info h2{font-size:17px;}
+  .phase-card .info p{margin:6px 0 0;font-size:14px;color:var(--text-secondary);}
+  .phase-tag{
+    font-size:11px;
+    letter-spacing:.02em;
+    color:var(--card-accent-text,#555);
+    background:var(--card-accent-bg,#eee);
+    padding:3px 9px;
+    border-radius:20px;
+    display:inline-block;
+    margin-bottom:8px;
+  }
+  .chevron{font-size:20px;color:var(--text-muted);flex-shrink:0;}
+  .phase-card.pending{border-left-style:dashed;}
+
+  .prep{--card-accent:var(--teal-border); --card-accent-bg:var(--teal-bg); --card-accent-text:var(--teal-text);}
+  .exec{--card-accent:var(--coral-border); --card-accent-bg:var(--coral-bg); --card-accent-text:var(--coral-text);}
+  .valid{--card-accent:var(--turquoise-border); --card-accent-bg:var(--turquoise-bg); --card-accent-text:var(--turquoise-text);}
+
+  /* ---- detail views ---- */
+  .detail{display:none;}
+  .detail.active{display:block;}
+  #overview.hidden{display:none;}
+
+  .back-btn{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    color:var(--text-primary);
+    font-family:'Inter',sans-serif;
+    font-size:14px;
+    font-weight:500;
+    padding:9px 16px;
+    border-radius:8px;
+    cursor:pointer;
+    margin-bottom:24px;
+  }
+  .back-btn:hover{background:#F0F1EF;}
+
+  .detail-head{
+    border-radius:10px;
+    padding:18px 22px;
+    margin-bottom:24px;
+    border:1px solid var(--border);
+  }
+  .detail-head h2{font-size:19px;}
+  .detail-head p{margin:6px 0 0;font-size:14px;color:var(--text-secondary);}
+
+  .detail-head.prep{background:var(--teal-bg);border-color:var(--teal-border);}
+  .detail-head.prep h2{color:var(--teal-text);}
+  .detail-head.exec{background:var(--coral-bg);border-color:var(--coral-border);}
+  .detail-head.exec h2{color:var(--coral-text);}
+  .detail-head.valid{background:var(--turquoise-bg);border-color:var(--turquoise-border);}
+  .detail-head.valid h2{color:var(--turquoise-text);}
+
+  .steps{display:flex;flex-direction:column;gap:0;}
+  .step{
+    display:flex;
+    gap:16px;
+    padding:16px 0;
+    border-bottom:1px solid var(--border);
+  }
+  .step:last-child{border-bottom:none;}
+  .step-num{
+    width:30px;height:30px;flex-shrink:0;
+    border-radius:50%;
+    background:var(--coral-bg);
+    color:var(--coral-text);
+    display:flex;align-items:center;justify-content:center;
+    font-size:13px;font-weight:600;font-family:'Space Grotesk',sans-serif;
+  }
+  .step h3{font-size:15px;margin-bottom:4px;}
+  .step p{margin:0;font-size:14px;color:var(--text-secondary);}
+  .step .service{font-size:12px;color:var(--coral-text);}
+
+  /* ---- sub-sections ---- */
+  .sub-section{margin-bottom:26px;}
+  .sub-section h3{font-size:14px;color:var(--text-secondary);margin-bottom:12px;}
+  .crit-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px;}
+  .crit-list li{position:relative;padding-left:18px;font-size:14px;color:var(--text-primary);}
+  .crit-list li::before{content:"";position:absolute;left:0;top:7px;width:6px;height:6px;border-radius:50%;background:var(--dot-color,#999);}
+  .crit-list.prep li::before{--dot-color:var(--teal-border);}
+  .crit-list.sub{margin:8px 0 0 4px;gap:6px;}
+  .crit-list.sub li{font-size:13.5px;}
+  .crit-list.sub li::before{width:5px;height:5px;top:7px;}
+  .steps-title{font-size:14px;color:var(--text-secondary);margin-bottom:12px;}
+
+  /* ---- casos de validación ---- */
+  .case-tag{display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap;}
+  .case-tag.happy{background:var(--teal-bg);color:var(--teal-text);}
+  .case-tag.negativo{background:var(--coral-bg);color:var(--coral-text);}
+
+  .case-card{border:1px solid var(--border);border-radius:10px;padding:18px 20px;margin-bottom:14px;background:var(--surface);}
+  .case-card-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
+  .case-card-head h4{font-size:15px;font-family:'Space Grotesk',sans-serif;font-weight:600;color:var(--text-primary);}
+  .case-field{display:grid;grid-template-columns:130px 1fr;gap:8px;font-size:13.5px;padding:8px 0;border-top:1px solid var(--border);}
+  .case-field:first-of-type{border-top:none;}
+  .case-field .label{color:var(--text-secondary);font-weight:600;}
+
+  .note{font-size:13px;color:var(--text-muted);margin-top:14px;}
+  .note a{color:var(--text-secondary);}
+
+  .group-tag{display:inline-block;background:var(--teal-bg);color:var(--teal-text);font-size:11.5px;font-weight:700;letter-spacing:.02em;padding:5px 12px;border-radius:20px;margin:8px 0 16px;}
+  .group-tag.exec{background:var(--coral-bg);color:var(--coral-text);}
+  .group-tag.valid{background:var(--turquoise-bg);color:var(--turquoise-text);}
+  .group-divider{border-top:1px solid var(--border);margin-top:30px;padding-top:2px;}
+
+  .env-tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.02em;padding:4px 11px;border-radius:6px;margin:16px 0 10px;background:#E7E9E7;color:var(--text-secondary);}
+  .env-tag.qa{background:var(--teal-bg);color:var(--teal-text);}
+  .env-tag.dev{background:#EDE9FE;color:#5B21B6;}
+  .env-tag:first-of-type{margin-top:6px;}
+
+  footer{margin-top:48px;font-size:12.5px;color:var(--text-muted);text-align:center;}
+
+  .mono{overflow-wrap:anywhere;}
+  .url{font-family:'IBM Plex Mono', monospace;font-size:12.5px;overflow-wrap:anywhere;word-break:break-word;color:var(--text-primary);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Notario Digital — Sorteos y Loterías</h1>
+    <p>Guía de referencia para el proveedor. Describe los prerrequisitos, los pasos de ejecución y los criterios de validación para garantizar el correcto funcionamiento del proceso de selección y guardado de ganadores a través del front del notario digital.</p>
+  </header>
+
+  <div class="module-tag"><strong>Módulo:</strong> Sistema de Pagos · Notario Digital (Sorteos y Loterías)</div>
+
+  <div id="overview">
+    <div class="phase-card prep" tabindex="0" role="button" onclick="showDetail('prep')" onkeydown="if(event.key==='Enter')showDetail('prep')">
+      <div class="info">
+        <span class="phase-tag">Etapa 1</span>
+        <h2>Preparación</h2>
+        <p>Acceso al front del notario, mecánica configurada, etapa vigente y activa, tablas base consistentes y opciones canjeadas.</p>
+      </div>
+      <span class="chevron">›</span>
+    </div>
+
+    <div class="phase-card exec" tabindex="0" role="button" onclick="showDetail('exec')" onkeydown="if(event.key==='Enter')showDetail('exec')">
+      <div class="info">
+        <span class="phase-tag">Etapa 2</span>
+        <h2>Ejecución</h2>
+        <p>Despliegue de componentes cloud, configuración del evento, generación del sorteo y confirmación para guardar ganadores.</p>
+      </div>
+      <span class="chevron">›</span>
+    </div>
+
+    <div class="phase-card valid" tabindex="0" role="button" onclick="showDetail('valid')" onkeydown="if(event.key==='Enter')showDetail('valid')">
+      <div class="info">
+        <span class="phase-tag">Etapa 3</span>
+        <h2>Validación</h2>
+        <p>Casos de prueba positivos y negativos del proceso de selección y guardado de ganadores.</p>
+      </div>
+      <span class="chevron">›</span>
+    </div>
+
+  </div>
+
+  <!-- ================= DETAIL: PREPARACIÓN ================= -->
+  <div class="detail" id="detail-prep">
+    <button class="back-btn" onclick="showOverview()">← Volver al inicio</button>
+    <div class="detail-head prep">
+      <h2>Etapa 1 · Preparación</h2>
+      <p>Para poder iniciar las pruebas, el entorno y los datos deben cumplir estrictamente con las siguientes condiciones.</p>
+    </div>
+
+    <div class="group-tag">Definition of Ready (DoR)</div>
+    <div class="sub-section">
+      <h3>Accesos y permisos</h3>
+      <p style="font-size:13.5px;color:var(--text-secondary);margin:0 0 8px;">Este flujo introduce accesos que no estaban en los flujos anteriores. Se diferencian por ambiente/cuenta: DEV en la cuenta Developer de Virginia, QA en la cuenta Developer de Ohio; la BD en la cuenta BD de cada región.</p>
+
+      <div class="env-tag dev">Ambiente DEV · Virginia (cuenta Developer)</div>
+      <ul class="crit-list prep">
+        <li><strong>Front del notario digital:</strong> acceso operativo con un usuario que tenga los permisos necesarios para ejecutar sorteos.</li>
+        <li><strong>Componentes cloud del notario digital:</strong> permisos para desplegarlos y validarlos, con la estructura de desacoplamiento.</li>
+        <li><strong>BD de resultados (cuenta BD Virginia):</strong> acceso a <span class="mono">bd_promocion_resultado</span> para validar los ganadores guardados por el proceso.</li>
+      </ul>
+
+      <div class="env-tag qa">Ambiente QA · Ohio (cuenta Developer)</div>
+      <ul class="crit-list prep">
+        <li><strong>Front del notario digital:</strong> acceso operativo con un usuario que tenga los permisos necesarios para ejecutar sorteos.</li>
+        <li><strong>Componentes cloud del notario digital:</strong> permisos para desplegarlos y validarlos, con la estructura de desacoplamiento.</li>
+        <li><strong>BD de resultados (cuenta BD Ohio):</strong> acceso a <span class="mono">bd_promocion_resultado</span> para validar los ganadores guardados por el proceso.</li>
+      </ul>
+      <p class="note">Pendiente confirmar con Plataforma el detalle de los servicios cloud del notario digital para precisar sus permisos.</p>
+    </div>
+
+    <div class="group-tag group-divider">Reglas de negocio</div>
+    <div class="sub-section">
+      <ul class="crit-list prep">
+        <li><strong>Vigencia de la etapa:</strong> la etapa del sorteo a ejecutar debe encontrarse dentro de la fecha vigente y su estado en el sistema debe ser activo (<span class="mono">estado_etapa = 1</span>).</li>
+        <li><strong>Etapa de proyección:</strong> la tabla <span class="mono">[sch_proyeccion].[cfg_proyeccion_etapa]</span> debe estar en la etapa 30.</li>
+      </ul>
+    </div>
+
+    <div class="group-tag group-divider">Configuración de datos de prueba</div>
+    <div class="sub-section">
+      <ul class="crit-list prep">
+        <li><strong>Configuración de la mecánica:</strong> la base de datos de ejecución debe contar con la configuración previa para el tipo de evento a realizar (Sorteo, Lotería o Lotería Final).</li>
+        <li><strong>Integridad de tablas base:</strong> deben estar correctamente parametrizadas y con datos consistentes las siguientes tablas:
+          <ul class="crit-list prep sub">
+            <li><span class="mono">[sch_configuracion].[cfg_opcion]</span></li>
+            <li><span class="mono">[sch_proyeccion].[trx_proyeccion]</span></li>
+            <li><span class="mono">[sch_proyeccion].[cfg_proyeccion_etapa]</span></li>
+            <li><span class="mono">[sch_proyeccion].[trx_opcion_proyectada]</span></li>
+          </ul>
+        </li>
+        <li><strong>Data de participantes:</strong> es obligatorio contar con un volumen de prueba de opciones ya canjeadas y debidamente asignadas a los usuarios participantes.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ================= DETAIL: EJECUCIÓN ================= -->
+  <div class="detail" id="detail-exec">
+    <button class="back-btn" onclick="showOverview()">← Volver al inicio</button>
+    <div class="detail-head exec">
+      <h2>Etapa 2 · Ejecución</h2>
+      <p>Una vez validadas las precondiciones, se realiza el siguiente flujo operativo en el sistema.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num exec">1</div>
+        <div>
+          <h3>Despliegue de componentes cloud</h3>
+          <p class="service exec">Cloud · Notario Digital</p>
+          <p>Desplegar los componentes cloud del notario digital con la estructura de desacoplamiento.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num exec">2</div>
+        <div>
+          <h3>Configuración del evento</h3>
+          <p class="service exec">Front del Notario Digital</p>
+          <p>Ingresar al front del notario digital y generar/confirmar la configuración exacta del evento (sorteo, lotería o lotería final) según los parámetros de la campaña.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num exec">3</div>
+        <div>
+          <h3>Generación del sorteo</h3>
+          <p class="service exec">Front del Notario Digital</p>
+          <p>Generar el sorteo para la selección de ganadores (sorteo) o la asignación de bolillas ganadoras (lotería).</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num exec">4</div>
+        <div>
+          <h3>Confirmación y guardado de ganadores</h3>
+          <p class="service exec">Proceso interno + BD</p>
+          <p>Confirmar la operación para desencadenar el proceso interno que guarda los ganadores resultantes en la base de datos de destino (<span class="mono">bd_promocion_resultado</span>).</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= DETAIL: VALIDACIÓN ================= -->
+  <div class="detail" id="detail-valid">
+    <button class="back-btn" onclick="showOverview()">← Volver al inicio</button>
+    <div class="detail-head valid">
+      <h2>Etapa 3 · Validación</h2>
+      <p>Casos de prueba positivos y negativos del proceso de selección y guardado de ganadores.</p>
+    </div>
+
+    <div class="sub-section">
+      <h3>Casos positivos (escenarios ideales)</h3>
+      <div class="case-card">
+          <div class="case-card-head"><h4>CP-01 · Generación exitosa de configuración</h4><span class="case-tag happy">Happy path</span></div>
+          <div class="case-field"><div class="label">Condición</div><div>La etapa se encuentra dentro de la fecha vigente y el <span class="mono">estado_etapa</span> es igual a 1.</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>Desde el front del notario digital se puede generar correctamente la configuración del sorteo o lotería.</div></div>
+      </div>
+
+      <div class="case-card">
+          <div class="case-card-head"><h4>CP-02 · Asignación exacta de ganadores</h4><span class="case-tag happy">Happy path</span></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>El sistema asigna correctamente a los ganadores basándose en las opciones canjeadas y asignadas, respetando el límite máximo de cupos o ganadores definidos en la tabla <span class="mono">cfg_proyeccion_etapa</span>.</div></div>
+      </div>
+
+      <div class="case-card">
+          <div class="case-card-head"><h4>CP-03 · Guardado exitoso en base de datos</h4><span class="case-tag happy">Happy path</span></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>Los datos completos de los ganadores asignados se insertan correctamente en la base de datos <span class="mono">bd_promocion_resultado</span>, sin truncamiento, alteración ni pérdida de información.</div></div>
+      </div>
+
+      <div class="case-card">
+          <div class="case-card-head"><h4>CP-04 · Trazabilidad de opciones proyectadas</h4><span class="case-tag happy">Happy path</span></div>
+          <div class="case-field"><div class="label">Condición</div><div>Los ganadores fueron generados y confirmados.</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>Las tablas dependientes (<span class="mono">trx_proyeccion</span> y <span class="mono">trx_opcion_proyectada</span>) actualizan sus estados correctamente para reflejar que el sorteo ya fue ejecutado y cerrado.</div></div>
+      </div>
+
+      <div class="case-card">
+          <div class="case-card-head"><h4>CP-05 · Lectura correcta de opciones válidas</h4><span class="case-tag happy">Happy path</span></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>El proceso de asignación de ganadores toma en cuenta exclusivamente a los usuarios que tengan opciones legítimamente canjeadas y registradas.</div></div>
+      </div>
+    </div>
+
+    <div class="sub-section">
+      <h3>Casos negativos (escenarios de error y restricciones)</h3>
+      <div class="case-card">
+          <div class="case-card-head"><h4>CN-01 · Ejecución fuera de fecha</h4><span class="case-tag negativo">Negativo</span></div>
+          <div class="case-field"><div class="label">Condición</div><div>La fecha actual del sistema es anterior al inicio o posterior al cierre de la fecha vigente de la etapa.</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>El sistema muestra un mensaje de error restrictivo y bloquea la generación de la configuración.</div></div>
+      </div>
+
+      <div class="case-card">
+          <div class="case-card-head"><h4>CN-02 · Estado de etapa inactivo</h4><span class="case-tag negativo">Negativo</span></div>
+          <div class="case-field"><div class="label">Condición</div><div>El campo <span class="mono">estado_etapa</span> es diferente de 1 (por ejemplo, 0, 2 o nulo).</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>El sistema no permite iniciar la asignación de ganadores: el botón o acción debe estar deshabilitado o arrojar error.</div></div>
+      </div>
+
+      <div class="case-card">
+          <div class="case-card-head"><h4>CN-03 · Ausencia de opciones canjeadas</h4><span class="case-tag negativo">Negativo</span></div>
+          <div class="case-field"><div class="label">Condición</div><div>Se intenta ejecutar la asignación de ganadores cuando la base de datos no registra ninguna opción canjeada.</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>El sistema cancela el proceso.</div></div>
+      </div>
+
+      <div class="case-card">
+          <div class="case-card-head"><h4>CN-04 · Fallas de integridad en tablas</h4><span class="case-tag negativo">Negativo</span></div>
+          <div class="case-field"><div class="label">Condición</div><div>Falta información estructural obligatoria en alguna de las tablas base (como configuraciones faltantes en <span class="mono">sch_configuracion</span> o <span class="mono">sch_proyeccion</span>).</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>El sistema detiene el sorteo y notifica el error.</div></div>
+      </div>
+
+      <div class="case-card">
+          <div class="case-card-head"><h4>CN-05 · Fallo en guardado de resultados (rollback)</h4><span class="case-tag negativo">Negativo</span></div>
+          <div class="case-field"><div class="label">Acción</div><div>Simular una pérdida de conexión o un error de permisos al momento de insertar los registros finales en <span class="mono">bd_promocion_resultado</span>.</div></div>
+          <div class="case-field"><div class="label">Resultado esperado</div><div>El sistema hace un rollback completo de la transacción para evitar que el sorteo quede a medias, y muestra un error en el front.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>Sistema de Pagos · Notario Digital (Sorteos y Loterías)</footer>
+</div>
+
+<script>
+function showDetail(phase){
+  document.getElementById('overview').classList.add('hidden');
+  document.querySelectorAll('.detail').forEach(function(d){ d.classList.remove('active'); });
+  document.getElementById('detail-' + phase).classList.add('active');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+function showOverview(){
+  document.querySelectorAll('.detail').forEach(function(d){ d.classList.remove('active'); });
+  document.getElementById('overview').classList.remove('hidden');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+</script>
+</body>
+</html>
